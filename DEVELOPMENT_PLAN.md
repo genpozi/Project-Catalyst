@@ -1,8 +1,8 @@
 
-# Project Vision: The AI Architect (Meta-Spec Generator)
+# Project Vision: 0relai (Zero Reliance)
 
 ## Executive Summary
-This project aims to evolve the current "Project Catalyst" into a **high-fidelity Specification Engine**. 
+This project aims to evolve the current prototype into a **high-fidelity Specification Engine**. 
 **Goal:** To ingest abstract human ideas and output a rigorous, technically precise "Blueprint Package." 
 **Value:** This blueprint is designed specifically to be consumed by AI Coding Agents (GitHub Copilot, Claude Code, Cursor, Windsurf). By defining the boundaries, schema, stack, and rules explicitly, we minimize AI hallucination and maximize one-shot code generation success.
 

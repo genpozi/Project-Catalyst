@@ -1,10 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phase, PlanTask } from '../types';
+import RefineBar from './RefineBar';
 
 interface ActionPlanViewProps {
   plan: Phase[];
   onContinue: (finalPlan: Phase[]) => void;
+  onRefine?: (prompt: string) => Promise<void>;
+  isRefining?: boolean;
 }
 
 const TrashIcon = () => (
@@ -22,10 +25,13 @@ const getPriorityColor = (p: string) => {
   }
 };
 
-const ActionPlanView: React.FC<ActionPlanViewProps> = ({ plan, onContinue }) => {
-  const [editedPlan, setEditedPlan] = useState<Phase[]>(() =>
-    JSON.parse(JSON.stringify(plan))
-  );
+const ActionPlanView: React.FC<ActionPlanViewProps> = ({ plan, onContinue, onRefine, isRefining = false }) => {
+  const [editedPlan, setEditedPlan] = useState<Phase[]>(plan);
+
+  // Sync state if prop changes (e.g. after AI refinement)
+  useEffect(() => {
+    setEditedPlan(JSON.parse(JSON.stringify(plan)));
+  }, [plan]);
 
   const handleTaskChange = (phaseIndex: number, taskIndex: number, field: keyof PlanTask, value: string) => {
     const newPlan = [...editedPlan];
@@ -63,6 +69,16 @@ const ActionPlanView: React.FC<ActionPlanViewProps> = ({ plan, onContinue }) => 
       <h2 className="text-2xl sm:text-3xl font-bold text-brand-text mb-2 text-center">Project Action Plan</h2>
       <p className="text-center text-blue-200 mb-6">Review and refine the AI-generated detailed plan. You can edit every detail of your tasks below.</p>
       
+      {onRefine && (
+        <div className="max-w-3xl mx-auto mb-8">
+            <RefineBar 
+                onRefine={onRefine} 
+                isRefining={isRefining} 
+                placeholder="e.g. 'Add a dedicated QA phase', 'Condense timeline to 4 weeks'" 
+            />
+        </div>
+      )}
+
       <div className="space-y-6">
         {editedPlan.map((phase, phaseIndex) => (
           <div key={phaseIndex} className="bg-slate-800/50 p-4 rounded-lg ring-1 ring-slate-700">

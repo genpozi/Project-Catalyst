@@ -1,5 +1,5 @@
 
-# AI Project Catalyst - Architecture & Internals
+# 0relai - Architecture & Internals
 
 ## 1. Core Philosophy
 The application acts as a state machine where `App.tsx` serves as the central orchestrator (The "Brain"). It manages the `projectData` object, which accumulates technical specifications layer-by-layer as the user progresses through the `AppPhase` lifecycle.
@@ -16,6 +16,10 @@ Each phase triggers a call to the Google Gemini API to generate the next layer o
 *   **Thinking Config:** For complex tasks (Architecture, Security), we use `thinkingBudget` to enable the model's reasoning capabilities.
 
 ## 4. Component Structure
+*   **Layout:**
+    *   `App.tsx`: Main layout container handling the flex-row structure.
+    *   `Sidebar.tsx`: Vertical left-hand navigation managing the flow between phases.
+    *   `Header.tsx`: Top branding and project reset controls.
 *   **Views:** Located in `components/`, these are largely presentational but handle some local UI state (e.g., Tabs in `DataModelView`).
 *   **Blueprint Studio:** A wrapper component that allows "Refinement Loops". It renders the standard Views but in a "Studio Mode" (actions hidden) alongside a JSON editor and an AI prompting interface.
 *   **Kanban Board:** Handles the execution phase. It introduces a secondary AI loop ("Task Assistant") which generates implementation guides on demand.
@@ -38,5 +42,6 @@ Each phase triggers a call to the Google Gemini API to generate the next layer o
     1. Add the enum to `AppPhase` in `types.ts`.
     2. Create a View component.
     3. Add a generation handler in `App.tsx`.
-    4. Update `renderCurrentPhase` in `App.tsx`.
+    4. Update `Sidebar.tsx` with a new icon and label.
+    5. Update `renderCurrentPhase` in `App.tsx`.
 *   **Styling:** Tailwind CSS is used exclusively.

@@ -1,8 +1,25 @@
 
-# AI Project Catalyst - User Guide
+# 0relai - User Guide
 
 ## Overview
-AI Project Catalyst is an intelligent "Meta-Architect" designed to help you go from a vague idea to a fully specified technical blueprint. It doesn't just write code; it plans the *entire* architecture so that when you (or an AI agent) start coding, you do it right the first time.
+**0relai** (Zero Reliance) is an intelligent "Meta-Architect" designed to help you go from a vague idea to a fully specified technical blueprint. It doesn't just write code; it plans the *entire* architecture so that when you (or an AI agent) start coding, you do it right the first time.
+
+## Navigation & Interface
+0relai uses a **stepped vertical navigation bar** on the left side of the screen.
+- **Vision:** Input your initial idea.
+- **Strategy:** Review personas and USPs.
+- **Research:** Feasibility analysis.
+- **Stack:** Technical architecture choices.
+- **Data:** Database schema and diagrams.
+- **Files:** Project file structure.
+- **Design:** UI/UX tokens and components.
+- **API:** Endpoint specifications.
+- **Security:** RLS and testing policies.
+- **Studio:** The "God Mode" editor to refine all previous steps.
+- **Rules:** The generated instructions for your AI agent.
+- **Plan:** The execution roadmap.
+- **Tasks:** Kanban board for implementation.
+- **Launch:** Download your assets.
 
 ## Key Features
 
@@ -11,7 +28,7 @@ AI Project Catalyst is an intelligent "Meta-Architect" designed to help you go f
 *   **Image:** Upload a whiteboard sketch, napkin drawing, or wireframe. The AI will analyze visual layout hints.
 *   **Voice:** Click "Record Voice Memo" to speak your idea. The AI will listen, summarize your concept, and auto-detect constraints and project types.
 
-### 2. Strategic Analysis (Brainstorming)
+### 2. Strategic Analysis
 Before jumping to code, the AI acts as a Product Manager. It generates:
 *   **User Personas:** Who are you building for?
 *   **USPs:** What makes this unique?
@@ -19,7 +36,7 @@ Before jumping to code, the AI acts as a Product Manager. It generates:
 
 ### 3. The Blueprint Generation Loop
 The app moves through several technical phases. In each phase, the AI makes decisions based on your initial constraints.
-*   **Research:** Competitor analysis and feasibility check (using Google Search).
+*   **Research:** Competitor analysis and feasibility check.
 *   **Architecture:** Selection of Tech Stack (Frontend, Backend, DB) and design patterns.
 *   **Data Model:** Full database schema creation with Mermaid.js diagrams.
 *   **File Structure:** A complete, recursive file tree optimized for your chosen framework.
@@ -52,8 +69,3 @@ It includes:
 *   `README.md`: Project documentation.
 *   `.cursorrules`: The brain for your AI coding assistant.
 *   `SPEC.md`: The full human-readable spec.
-
-## Best Practices
-*   **Be specific in constraints:** If you hate TypeScript, say "No TypeScript" in the constraints box at the start.
-*   **Refine often:** Use the Blueprint Studio to tweak the Architecture before generating the Action Plan.
-*   **Use the generated rules:** The `.cursorrules` file is the most valuable asset. It aligns your coding environment with the architecture.

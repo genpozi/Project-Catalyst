@@ -1,6 +1,6 @@
 {
-  "name": "AI Project Catalyst",
-  "description": "An interactive application that leverages AI to guide users through the process of refining an idea, conducting research, creating a detailed action plan, preparing a workspace, and generating a final specifications document.",
+  "name": "0relai",
+  "description": "0relai (Zero Reliance) is an advanced architectural engine that leverages AI to guide users from abstract ideas to fully specified, production-ready technical blueprints.",
   "requestFramePermissions": [
     "microphone"
   ]
