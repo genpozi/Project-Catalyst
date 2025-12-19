@@ -23,6 +23,12 @@ export enum TaskStatus {
   DONE = 'Done'
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
 export interface PlanTask {
   description: string;
   estimatedDuration: string;
@@ -32,10 +38,11 @@ export interface PlanTask {
 
 export interface Task extends PlanTask {
   id: string;
-  content: string; // Maps to description for backward compatibility/UI logic
+  content: string; // Maps to description
   status: TaskStatus;
   phase: string;
-  implementationGuide?: string; // Markdown content for specific execution steps
+  implementationGuide?: string;
+  checklist?: ChecklistItem[];
 }
 
 export interface Phase {
@@ -59,15 +66,17 @@ export interface TechStack {
 
 export interface ArchitectureData {
   stack: TechStack;
-  patterns: string[]; // e.g., "Microservices", "SSR"
+  patterns: string[];
   dependencies: { name: string; description: string }[];
-  diagram?: string; // Mermaid code placeholder for future
+  diagram?: string;
+  cloudDiagram?: string;
+  iacCode?: string;
 }
 
 export interface SchemaColumn {
   name: string;
   type: string;
-  constraints?: string; // e.g. "PRIMARY KEY", "NOT NULL"
+  constraints?: string;
   description: string;
 }
 
@@ -100,7 +109,7 @@ export interface ColorPalette {
 export interface ComponentSpec {
   name: string;
   description: string;
-  states: string[]; // e.g. "Hover", "Active", "Loading"
+  states: string[];
 }
 
 export interface DesignSystem {
@@ -108,10 +117,11 @@ export interface DesignSystem {
   typography: { role: string; fontFamily: string; size: string }[];
   coreComponents: ComponentSpec[];
   layoutStrategy: string;
+  wireframeCode?: string;
 }
 
 export interface ApiEndpoint {
-  method: string; // GET, POST, etc.
+  method: string;
   path: string;
   summary: string;
   requestBody?: string;
@@ -124,26 +134,33 @@ export interface ApiSpecification {
 }
 
 export interface SecurityPolicy {
-  name: string; // e.g., "Row Level Security: Posts"
-  description: string; // "Users can only edit their own posts."
-  implementationHint: string; // "Use Supabase RLS policies"
+  name: string;
+  description: string;
+  implementationHint: string;
 }
 
 export interface TestRequirement {
-  name: string; // "User Login Flow"
+  name: string;
   type: 'Unit' | 'Integration' | 'E2E';
   description: string;
 }
 
 export interface ComplianceRule {
-  standard: string; // "GDPR", "OWASP"
-  requirement: string; // "Encrypt PII at rest"
+  standard: string;
+  requirement: string;
 }
 
 export interface SecurityContext {
   policies: SecurityPolicy[];
   testingStrategy: TestRequirement[];
   compliance: ComplianceRule[];
+}
+
+export interface CostEstimation {
+  monthlyInfrastructure: { service: string; estimatedCost: string; reason: string }[];
+  totalProjectHours: string;
+  suggestedTeamSize: string;
+  risks: { description: string; impact: string }[];
 }
 
 export interface Persona {
@@ -154,15 +171,25 @@ export interface Persona {
 
 export interface BrainstormingData {
   questions: string[];
-  usps: string[]; // Unique Selling Propositions
+  usps: string[];
   personas: Persona[];
   features: string[];
 }
 
+export interface Snapshot {
+  id: string;
+  name: string;
+  timestamp: number;
+  description: string;
+  data: Partial<ProjectData>;
+}
+
 export interface ProjectData {
+  id: string;
+  name: string;
   initialIdea: string;
-  projectType?: string; // e.g. "Web App", "Mobile App"
-  constraints?: string; // User defined technical constraints
+  projectType?: string;
+  constraints?: string;
   brainstormingResults?: BrainstormingData;
   researchReport?: ResearchReportData;
   architecture?: ArchitectureData;
@@ -171,8 +198,11 @@ export interface ProjectData {
   designSystem?: DesignSystem;
   apiSpec?: ApiSpecification;
   securityContext?: SecurityContext;
+  costEstimation?: CostEstimation;
   agentRules?: string;
   actionPlan?: Phase[];
   tasks?: Task[];
   kickoffAssets?: string;
+  snapshots?: Snapshot[];
+  lastUpdated: number;
 }

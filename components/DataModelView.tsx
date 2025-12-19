@@ -28,6 +28,16 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
 
   if (!data) return null;
 
+  const handleOpenMermaidLive = () => {
+      const state = {
+        code: data.mermaidChart,
+        mermaid: { theme: 'dark' },
+      };
+      const json = JSON.stringify(state);
+      const encoded = btoa(json);
+      window.open(`https://mermaid.live/edit#base64:${encoded}`, '_blank');
+  };
+
   return (
     <div className="animate-slide-in-up">
       {!hideActions && (
@@ -68,13 +78,20 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
         </div>
       </div>
 
-      <div className="bg-slate-800/50 rounded-lg ring-1 ring-slate-700 min-h-[400px] p-6 overflow-hidden">
+      <div className="bg-slate-800/50 rounded-lg ring-1 ring-slate-700 min-h-[400px] p-6 overflow-hidden relative">
         {/* Mermaid Diagram */}
         {activeTab === 'diagram' && (
-            <div className="flex justify-center overflow-x-auto">
+            <div className="flex justify-center overflow-x-auto relative">
                <div className="mermaid">
                  {data.mermaidChart}
                </div>
+               <button 
+                 onClick={handleOpenMermaidLive}
+                 className="absolute top-0 right-0 bg-slate-700 hover:bg-brand-primary text-white text-xs px-3 py-2 rounded shadow flex items-center gap-2 transition-colors"
+               >
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                 Edit in Mermaid Live
+               </button>
             </div>
         )}
 

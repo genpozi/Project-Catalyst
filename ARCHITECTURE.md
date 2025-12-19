@@ -5,43 +5,40 @@
 The application acts as a state machine where `App.tsx` serves as the central orchestrator (The "Brain"). It manages the `projectData` object, which accumulates technical specifications layer-by-layer as the user progresses through the `AppPhase` lifecycle.
 
 ## 2. State Management
-*   **Central Store:** `App.tsx` holds the `projectData` state.
-*   **Persistence:** `localStorage` is used to persist state between reloads via the `SAVED_STATE_KEY`.
-*   **Data Flow:** Components (Views) receive `projectData` slices as props and trigger updates via callback functions (e.g., `onContinue`, `onUpdate`).
+*   **Central Store:** `App.tsx` holds the `projectData` state via `ProjectContext`.
+*   **Persistence:** `localStorage` is used to persist state.
+*   **Data Flow:** Components (Views) receive `projectData` slices as props and trigger updates via callback functions.
 
 ## 3. The Generation Pipeline
 Each phase triggers a call to the Google Gemini API to generate the next layer of the spec.
-*   **Prompt Engineering:** Prompts are constructed dynamically in `App.tsx` using the accumulated context from previous phases (e.g., The Schema generation prompt injects the selected Tech Stack).
-*   **Structured Output:** We leverage Gemini's `responseSchema` to ensure strict JSON output for critical data structures (Schema, API Spec, Design System).
-*   **Thinking Config:** For complex tasks (Architecture, Security), we use `thinkingBudget` to enable the model's reasoning capabilities.
+*   **GeminiService:** A dedicated service class that abstracts all API interactions.
+*   **Thinking Config:** For complex tasks (Architecture, Security), we use `thinkingBudget` (Gemini 2.0 Flash Thinking/Pro) to enable reasoning.
+*   **Code Forge:** Dynamic generation of `package.json`, `setup_repo.sh`, and `main.tf` happens during the final Kickoff phase to ensure all architectural decisions are captured.
 
 ## 4. Component Structure
-*   **Layout:**
-    *   `App.tsx`: Main layout container handling the flex-row structure.
-    *   `Sidebar.tsx`: Vertical left-hand navigation managing the flow between phases.
-    *   `Header.tsx`: Top branding and project reset controls.
-*   **Views:** Located in `components/`, these are largely presentational but handle some local UI state (e.g., Tabs in `DataModelView`).
-*   **Blueprint Studio:** A wrapper component that allows "Refinement Loops". It renders the standard Views but in a "Studio Mode" (actions hidden) alongside a JSON editor and an AI prompting interface.
-*   **Kanban Board:** Handles the execution phase. It introduces a secondary AI loop ("Task Assistant") which generates implementation guides on demand.
+*   **Views:** Located in `components/`, these handle specific phases (e.g., `ArchitectureView`, `KanbanBoard`).
+*   **Blueprint Studio:** A wrapper component that allows "Refinement Loops" and manages Version History (Snapshots).
+*   **RefineBar:** A reusable component that sends natural language modification requests to the AI to update specific JSON slices.
 
 ## 5. Key Data Structures (`types.ts`)
 *   `ProjectData`: The master object containing all specs.
-*   `ArchitectureData`: Tech stack and patterns.
+*   `ArchitectureData`: Tech stack, patterns, and IaC code.
 *   `SchemaData`: Database tables and diagrams.
 *   `FileNode`: Recursive file tree structure.
-*   `DesignSystem`: UI tokens and components.
+*   `DesignSystem`: UI tokens, components, and wireframe HTML.
 *   `Task`: Individual units of work for the Kanban board.
 
 ## 6. API Integration
 *   **Client:** `@google/genai` SDK.
-*   **Model:** Primarily `gemini-2.5-flash` for speed and `thinking` capabilities.
-*   **Audio:** Native audio ingestion via `inlineData` in `handleAnalyzeAudio`.
+*   **Models:** 
+    *   `gemini-3-flash-preview` for high-speed JSON generation.
+    *   `gemini-3-pro-preview` for complex reasoning (Architecture, Security).
+    *   `gemini-2.5-flash-native-audio-preview` for voice input analysis.
 
 ## 7. Contribution Guidelines
 *   **Adding a Phase:**
     1. Add the enum to `AppPhase` in `types.ts`.
     2. Create a View component.
     3. Add a generation handler in `App.tsx`.
-    4. Update `Sidebar.tsx` with a new icon and label.
-    5. Update `renderCurrentPhase` in `App.tsx`.
+    4. Update `Sidebar.tsx`.
 *   **Styling:** Tailwind CSS is used exclusively.

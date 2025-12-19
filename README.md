@@ -3,17 +3,18 @@
 
 **0relai** is an advanced AI-powered architectural engine designed to transform abstract software ideas into rigorous, production-ready technical blueprints. It acts as a "Meta-Architect," guiding you through strategy, stack selection, data modeling, and security planning before generating a complete developer handover bundle.
 
-![0relai Interface](https://via.placeholder.com/1200x600/0f172a/c084fc?text=0relai+Interface+Preview)
+![0relai Interface](https://via.placeholder.com/1200x600/0f172a/c084fc?text=0relai+v2.0+Interface)
 
 ## ✨ Core Features
 
 - **Multi-Modal Intake:** Voice, Text, and Image analysis for project initiation.
 - **Strategic Planning:** Automated persona generation, USP analysis, and user journey mapping.
-- **Full-Stack Architecture:** Intelligent stack selection (Frontend, Backend, DB) based on constraints.
+- **Full-Stack Architecture:** Intelligent stack selection (Frontend, Backend, DB) and **Terraform IaC generation**.
 - **Visual Data Modeling:** Interactive Entity-Relationship Diagrams (ERD) and Schema generation (Prisma/SQL).
-- **Blueprint Studio:** A dedicated IDE to refine and tweak AI-generated decisions in real-time.
+- **Blueprint Studio:** A dedicated IDE to refine and tweak AI-generated decisions in real-time with **Version History**.
 - **Agent Rules Engine:** Generates `.cursorrules` and System Prompts to guide AI coding assistants (Cursor, Copilot).
-- **Developer Handover:** Exports a `.zip` bundle with scaffold scripts, config files, and documentation.
+- **Code Forge:** Exports a `.zip` bundle with `package.json`, `setup_repo.sh`, scaffold scripts, and documentation.
+- **Project Management:** Built-in Kanban board with **Jira/Linear CSV export**.
 
 ## 🛠️ Installation & Setup
 
@@ -41,7 +42,6 @@
     ```env
     API_KEY=your_google_gemini_api_key_here
     ```
-    *Note: In production/deployment, ensure this key is set in your environment variables.*
 
 4.  **Run Development Server**
     ```bash
@@ -56,17 +56,17 @@
 ## 🏗️ Project Structure
 
 - `src/App.tsx`: Main application orchestrator and state machine.
+- `src/GeminiService.ts`: Centralized service for all AI interactions and code generation.
 - `src/components/`: UI components (Views, Sidebar, Inputs).
 - `src/types.ts`: TypeScript definitions for the architectural data models.
-- `src/components/BlueprintStudio.tsx`: The core logic for the refinement interface.
 
 ## 🤝 Contributing
 
 0relai is designed to be extensible. To add a new phase to the architectural pipeline:
 1.  Add the phase enum to `AppPhase` in `types.ts`.
 2.  Create a new View component in `components/`.
-3.  Add the generation logic to `App.tsx`.
-4.  Update `Sidebar.tsx` with a new icon and label.
+3.  Add the generation logic to `App.tsx` and `GeminiService.ts`.
+4.  Update `Sidebar.tsx`.
 
 ## 📄 License
 

@@ -111,10 +111,55 @@ const SpecDocument: React.FC<SpecDocumentProps> = ({ projectData, onContinue }) 
           </section>
         )}
 
-        {/* Section 5: Action Plan */}
+        {/* Section 5: Cost & Resource Projections */}
+        {projectData.costEstimation && (
+          <section>
+            <h3 className="text-2xl font-bold border-b-2 border-brand-primary pb-2 mb-4">5. Resource & Financial Projections</h3>
+            <div className="grid grid-cols-2 gap-8 mb-6">
+                <div className="bg-gray-50 p-4 rounded border">
+                    <span className="text-xs uppercase font-bold text-gray-500">Estimated Effort</span>
+                    <div className="text-2xl font-bold text-brand-primary">{projectData.costEstimation.totalProjectHours}</div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded border">
+                    <span className="text-xs uppercase font-bold text-gray-500">Suggested Team Size</span>
+                    <div className="text-2xl font-bold text-brand-primary">{projectData.costEstimation.suggestedTeamSize}</div>
+                </div>
+            </div>
+            <h4 className="text-lg font-bold mb-3">Infrastructure Estimates (Monthly)</h4>
+            <table className="min-w-full text-sm text-left text-gray-700 mb-6">
+                <thead className="bg-gray-100 uppercase text-xs">
+                    <tr>
+                        <th className="px-4 py-2">Service</th>
+                        <th className="px-4 py-2">Cost Range</th>
+                        <th className="px-4 py-2">Allocation Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {projectData.costEstimation.monthlyInfrastructure.map((item, idx) => (
+                        <tr key={idx} className="border-b">
+                            <td className="px-4 py-2 font-semibold">{item.service}</td>
+                            <td className="px-4 py-2">{item.estimatedCost}</td>
+                            <td className="px-4 py-2 text-gray-600">{item.reason}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <h4 className="text-lg font-bold mb-3">Operational Risks</h4>
+            <ul className="space-y-2">
+                {projectData.costEstimation.risks.map((risk, idx) => (
+                    <li key={idx} className="flex items-start gap-3 bg-red-50 p-3 rounded border border-red-100">
+                        <span className="font-bold text-red-600 uppercase text-[10px] mt-1">[{risk.impact}]</span>
+                        <span className="text-sm">{risk.description}</span>
+                    </li>
+                ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Section 6: Action Plan */}
         {projectData.actionPlan && (
           <section>
-            <h3 className="text-2xl font-bold border-b-2 border-brand-primary pb-2 mb-4">5. Detailed Action Plan</h3>
+            <h3 className="text-2xl font-bold border-b-2 border-brand-primary pb-2 mb-4">{projectData.costEstimation ? '6' : '5'}. Detailed Action Plan</h3>
             <div className="space-y-6">
               {projectData.actionPlan.map((phase, i) => (
                 <div key={i} className="break-inside-avoid">

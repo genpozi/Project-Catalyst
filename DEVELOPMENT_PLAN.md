@@ -1,94 +1,84 @@
 
-# Project Vision: 0relai (Zero Reliance)
+# Project Vision: 0relai (Zero Reliance) - Master Development Plan
 
-## Executive Summary
-This project aims to evolve the current prototype into a **high-fidelity Specification Engine**. 
-**Goal:** To ingest abstract human ideas and output a rigorous, technically precise "Blueprint Package." 
-**Value:** This blueprint is designed specifically to be consumed by AI Coding Agents (GitHub Copilot, Claude Code, Cursor, Windsurf). By defining the boundaries, schema, stack, and rules explicitly, we minimize AI hallucination and maximize one-shot code generation success.
+## 🎯 Executive Summary
+0relai acts as a "Genius Full-Stack Architect," making high-level technical decisions so that human developers and AI coding agents can focus on implementation with zero ambiguity.
 
-The tool acts as a "Genius Full-Stack Architect," making high-level technical decisions so the coding agents can focus on implementation.
+## 🗺️ The 10-Epic Roadmap (Phase 2: "Make it Real")
 
----
+### 🏗️ Core Infrastructure
 
-## The 10-Epic Development Roadmap
+#### **EPIC 1: The Monolith Breakup (State Architecture)**
+**Goal:** Decouple `App.tsx` into a robust Context-based architecture.
+*   **Status:** ✅ Complete
+*   **Outcome:** Implemented `ProjectContext` and `useProjectReducer`. API calls centralized in `GeminiService`.
 
-### EPIC 1: Context Ingestion & Intent Analysis [COMPLETED]
-**Goal:** Move beyond a simple text box to a multi-modal intake system that understands the *nuance* of the product.
-*   **Features:**
-    *   **Multi-modal Input:** Accept text descriptions, uploaded wireframes (images), and voice memos.
-    *   **Constraint Definition:** specific inputs for "Non-negotiables" (e.g., "Must use Supabase", "Must be Mobile First").
-    *   **Audience Profiling:** AI analysis of the target user to influence UX decisions.
+#### **EPIC 2: Synapse Reinforcement (Strict Schemas)**
+**Goal:** Eliminate "JSON Parse Errors" and hallucinated data structures.
+*   **Status:** ✅ Complete
+*   **Outcome:** All Gemini API calls use strictly typed `responseSchema`.
 
-### EPIC 2: Intelligent Stack & Architecture Resolution [COMPLETED]
-**Goal:** The AI must act as a CTO, selecting the best tools for the job based on the Intent Manifest.
-*   **Features:**
-    *   **Stack Recommender:** Suggests specific versions (e.g., "React 19", "Next.js 14 App Router", "Tailwind 3.4") based on requirements (SEO vs. SPA, Real-time vs. Static).
-    *   **Architecture Patterns:** Selects patterns (Monolith, Microservices, Serverless) and justifies the choice.
-    *   **Dependency Locking:** Generates a preliminary `package.json` dependency list to prevent version conflicts in future AI generation.
+#### **EPIC 3: Memory Persistence (Storage Engine)**
+**Goal:** Prevent data loss and allow multiple projects.
+*   **Status:** ✅ Complete
+*   **Outcome:** `localStorage` implementation with project gallery and save/load/delete functionality.
 
-### EPIC 3: Data Model & Schema Engineering [COMPLETED]
-**Goal:** Design the database structure before a single line of code is written.
-*   **Features:**
-    *   **Schema Visualization:** Generate Mermaid.js Entity-Relationship Diagrams (ERD).
-    *   **Schema Code Generation:** Output raw `schema.prisma` or SQL DDL.
-    *   **Relationship Mapping:** Explicitly define One-to-Many, Many-to-Many relationships and foreign keys.
+### 🧠 Intelligence & Reasoning
 
-### EPIC 4: The "Virtual File Tree" Generator [COMPLETED]
-**Goal:** Create the mental map of the project structure for the coding agent.
-*   **Features:**
-    *   **ASCII Tree Generation:** A complete, standard-compliant file structure (e.g., `src/components`, `src/lib`, `src/hooks`).
-    *   **File Purpose Descriptions:** A metadata layer explaining *what* goes in `utils/helpers.ts` vs `lib/utils.ts` to prevent circular dependencies.
-    *   **Convention Enforcement:** Enforcing naming conventions (PascalCase for components, camelCase for functions).
+#### **EPIC 4: Deep Thought Integration (Thinking Models)**
+**Goal:** Utilize Gemini's reasoning capabilities for complex tasks.
+*   **Status:** ✅ Complete
+*   **Outcome:** Configured `thinkingBudget` for Architecture and Security phases using `gemini-3-pro-preview`.
 
-### EPIC 5: UI/UX System & Design Tokens [COMPLETED]
-**Goal:** Define the "Look and Feel" in machine-readable formats.
-*   **Features:**
-    *   **Design System Generator:** specific Tailwind color palettes, typography scales, and border radii.
-    *   **Component Library Definition:** A list of required atomic components (Buttons, Inputs, Modals) and their variant states (Hover, Active, Disabled).
-    *   **Layout Specifications:** Flexbox/Grid strategies for main layouts.
+#### **EPIC 5: Grounded Research (Web Search)**
+**Goal:** Ensure technical recommendations are up-to-date.
+*   **Status:** ✅ Complete
+*   **Outcome:** Research phase uses `googleSearch` tool to provide sourced feasibility reports.
 
-### EPIC 6: API Surface & Logic Flow Specification [COMPLETED]
-**Goal:** Define how data moves between client and server.
-*   **Features:**
-    *   **Endpoint Definition:** OpenAPI/Swagger-style paths, methods (GET/POST), and expected payloads.
-    *   **Server Action/Mutation Plans:** specific logic flows for backend operations.
-    *   **State Management Strategy:** deciding between Context API, Zustand, or Redux.
+### 👁️ Visualization & UX
 
-### EPIC 7: The "Agent Rules" Engine (.cursorrules / System Prompts) [COMPLETED]
-**Goal:** The most critical feature. Generating the *instructions* for the next AI.
-*   **Features:**
-    *   **Rule Compilation:** Aggregating Epics 2-6 into a single `SYSTEM_PROMPT.md` or `.cursorrules` file.
-    *   **Coding Standards:** Explicit instructions on "No `any` types", "Use arrow functions", "Error handling patterns".
-    *   **Tech-Specific Instructions:** e.g., "When using Next.js, use `next/image` for all images."
+#### **EPIC 6: The Architect's Studio (Interactive Editor)**
+**Goal:** Make the "Blueprint Studio" a true workspace.
+*   **Status:** ✅ Complete
+*   **Outcome:** Split-view editor, AI Refinement Bar, Snapshot/Versioning system implemented.
 
-### EPIC 8: Security, Testing & Compliance Matrix [COMPLETED]
-**Goal:** ensuring production-readiness is baked in, not bolted on.
-*   **Features:**
-    *   **RLS (Row Level Security) Policies:** Defining who can see what data.
-    *   **Testing Strategy:** generating a list of critical Unit and E2E tests required (e.g., "Test Login Flow", "Test Payment Webhook").
-    *   **Validation Rules:** Zod schemas for form inputs.
+#### **EPIC 7: Visual Cortex (Diagram Interactivity)**
+**Goal:** Make diagrams usable for large projects.
+*   **Status:** ✅ Complete
+*   **Outcome:** Mermaid.js integration for C4 Architecture and ERD diagrams with "Edit in Live Editor" deep links.
 
-### EPIC 9: Interactive Blueprint Studio (The UI) [COMPLETED]
-**Goal:** A specialized IDE-like interface for the human to review and tweak the AI's architectural decisions.
-*   **Features:**
-    *   **Split View:** Visual Tree vs. Code Specs.
-    *   **Edit-in-Place:** JSON editor for power users.
-    *   **Regenerate Context:** "Refine with AI" logic to update specific sections (e.g., "Switch to PostgreSQL").
+### 🚀 Execution & Handoff
 
-### EPIC 10: The "Handover" Package & Integration [COMPLETED]
-**Goal:** delivering the payload to the developer or the next AI.
-*   **Features:**
-    *   **Downloadable Zip:** Contains `scaffold.sh`, `README.md`, `SPEC.md`, `schema.prisma`, `package.json`, and `.cursorrules`.
-    *   **Copy-Paste Context:** One-click copy formatted specifically for AI context windows.
+#### **EPIC 8: Task Processor (Advanced Kanban)**
+**Goal:** Turn high-level plans into executable tickets.
+*   **Status:** ✅ Complete
+*   **Outcome:** Kanban board with sub-tasks, checklists, and AI-generated Implementation Guides per task.
 
-### EPIC 11: Task Planning & Execution [COMPLETED]
-**Goal:** Bridge the gap between spec and code.
-*   **Features:**
-    *   **Action Plan:** Broken down phases with estimates.
-    *   **Workspace:** Kanban board for managing tasks.
-    *   **Task Implementation Assistant:** AI generates specific code guides for individual tasks.
+#### **EPIC 9: The Code Forge (Scaffolding Engine)**
+**Goal:** Generate *actual* code, not just empty files.
+*   **Status:** ✅ Complete
+*   **Outcome:** The "Launch" bundle now includes:
+    *   `package.json` / `requirements.txt` (Auto-generated based on stack).
+    *   `setup_repo.sh` (Auto-generated GitHub CLI script).
+    *   `docker-compose.yml`.
+    *   Terraform `main.tf` infrastructure code.
+
+#### **EPIC 10: Agent Protocol (Context-Aware Rules)**
+**Goal:** The ultimate `.cursorrules` file.
+*   **Status:** ✅ Complete
+*   **Outcome:** Synthesizes the entire project state into a system instruction set included in the ZIP.
 
 ---
 
-## Status
-All core epics have been implemented as of the latest build. The application now supports full end-to-end specification generation with voice input, refinement loops, and detailed export capabilities.
+## ✅ Completed Milestones (Phase 1 & 2)
+
+- [x] Multi-modal Input (Text, Image, Voice).
+- [x] Strategic Foundation (Brainstorming, Personas).
+- [x] Architecture & Stack Resolution (IaC Support).
+- [x] Data Model Engineering (Mermaid/SQL).
+- [x] Codebase Blueprinting (File Tree).
+- [x] UI/UX Design Tokens & Wireframing.
+- [x] API & Security Specs.
+- [x] Blueprint Studio (Versioning, Health Checks).
+- [x] Kanban & Task Export (Jira/Linear CSV).
+- [x] Full Code Forge Handover.

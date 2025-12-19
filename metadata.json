@@ -1,5 +1,5 @@
 {
-  "name": "0relai",
+  "name": "0relai Main",
   "description": "0relai (Zero Reliance) is an advanced architectural engine that leverages AI to guide users from abstract ideas to fully specified, production-ready technical blueprints.",
   "requestFramePermissions": [
     "microphone"
