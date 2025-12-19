@@ -10,51 +10,41 @@ interface PhaseStepperProps {
 const PhaseStepper: React.FC<PhaseStepperProps> = ({ currentPhase, unlockedPhases }) => {
   const phases = Object.values(AppPhase);
   const currentIndex = phases.indexOf(currentPhase);
+  
+  // Calculate progress percentage
+  const progress = ((currentIndex) / (phases.length - 1)) * 100;
 
   return (
-    <div className="w-full py-4 mb-6 overflow-x-auto custom-scrollbar">
-      <div className="flex items-center justify-between min-w-[800px] px-4">
-        {phases.map((phase, index) => {
-          const isCurrent = phase === currentPhase;
-          const isCompleted = index < currentIndex;
-          const isUnlocked = unlockedPhases.includes(phase);
-          
-          return (
-            <React.Fragment key={phase}>
-              <div className="flex flex-col items-center group relative">
-                <div 
-                  className={`
-                    w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 z-10
-                    ${isCurrent ? 'bg-brand-primary text-white ring-4 ring-brand-primary/20 scale-110 shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 
-                      isCompleted ? 'bg-green-500 text-white' : 
-                      isUnlocked ? 'bg-slate-700 text-slate-300 border border-slate-600' : 'bg-slate-800 text-slate-600 border border-slate-700'}
-                  `}
-                >
-                  {isCompleted ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                  ) : (
-                    index + 1
-                  )}
-                </div>
-                <span className={`
-                  absolute -bottom-6 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-colors duration-300
-                  ${isCurrent ? 'text-brand-accent' : isCompleted ? 'text-green-400' : 'text-slate-500'}
-                `}>
-                  {phase}
-                </span>
-              </div>
-              
-              {index < phases.length - 1 && (
-                <div className="flex-grow h-[2px] mx-2 relative overflow-hidden bg-slate-800">
-                  <div 
-                    className={`absolute inset-0 transition-all duration-700 ${isCompleted ? 'bg-green-500' : isCurrent ? 'bg-brand-primary animate-pulse' : 'bg-transparent'}`}
-                    style={{ width: isCompleted ? '100%' : '0%' }}
-                  ></div>
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
+    <div className="w-full mb-6 relative">
+      <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-glass-text-secondary mb-2 px-1">
+        <span>Initiation</span>
+        <span>Strategy</span>
+        <span>Architecture</span>
+        <span>Specs</span>
+        <span>Execution</span>
+      </div>
+      
+      {/* Track Background */}
+      <div className="h-1.5 w-full bg-brand-surface rounded-full overflow-hidden">
+        {/* Active Progress */}
+        <div 
+          className="h-full bg-gradient-to-r from-brand-primary to-tech-cyan transition-all duration-700 ease-out relative"
+          style={{ width: `${progress}%` }}
+        >
+            <div className="absolute right-0 top-0 bottom-0 w-2 bg-white/50 animate-pulse"></div>
+        </div>
+      </div>
+
+      {/* Current Phase Indicator Badge */}
+      <div className="flex items-center gap-2 mt-3">
+        <span className="text-xs text-glass-text-secondary">Current Phase:</span>
+        <div className="flex items-center gap-2 px-3 py-1 bg-brand-primary/10 border border-brand-primary/20 rounded-full">
+            <div className="w-1.5 h-1.5 bg-brand-primary rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold text-brand-primary uppercase tracking-wide">{currentPhase}</span>
+        </div>
+        <div className="ml-auto text-xs text-glass-text-secondary font-mono">
+            {currentIndex + 1} / {phases.length}
+        </div>
       </div>
     </div>
   );

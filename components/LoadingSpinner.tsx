@@ -1,71 +1,82 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const LoadingSpinner: React.FC = () => {
-  const [messageIndex, setMessageIndex] = useState(0);
-  const messages = [
-    "Initializing neural architect...",
-    "Scanning competitive landscape...",
-    "Selecting optimal tech stack components...",
-    "Engineering relational data structures...",
-    "Mapping recursive file systems...",
-    "Synthesizing UI/UX design tokens...",
-    "Drafting secure API specifications...",
-    "Compiling agent-protocol instructions...",
-    "Building implementation roadmap...",
-    "Finalizing architectural blueprint..."
+const ActivityTerminal: React.FC = () => {
+  const [logs, setLogs] = useState<string[]>(["> Initializing Neural Architect v2.0..."]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const steps = [
+    "Analyzing project constraints and requirements...",
+    "Querying knowledge base for competitive patterns...",
+    "Selecting optimal technology stack...",
+    "Resolution: Frontend -> React/Vite",
+    "Resolution: Backend -> Node/Express",
+    "Constructing entity-relationship models...",
+    "Normalizing database schema (3NF)...",
+    "Drafting API contracts (OpenAPI 3.0)...",
+    "Generating infrastructure-as-code (Terraform)...",
+    "Synthesizing UI design tokens...",
+    "Compiling final blueprint artifacts...",
+    "Verifying architectural integrity...",
   ];
 
   useEffect(() => {
+    let stepIndex = 0;
     const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % messages.length);
-    }, 2500);
+      if (stepIndex < steps.length) {
+        const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' }) + "." + Math.floor(Math.random() * 999);
+        setLogs(prev => [...prev, `[${timestamp}] ${steps[stepIndex]}`]);
+        stepIndex++;
+      }
+    }, 800);
+
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-in text-center p-8">
-      <div className="relative w-32 h-32 mb-10">
-        {/* Outer Ring */}
-        <div className="absolute inset-0 border-4 border-brand-primary/20 rounded-full"></div>
-        <div className="absolute inset-0 border-4 border-t-brand-accent rounded-full animate-spin"></div>
-        
-        {/* Middle Ring */}
-        <div className="absolute inset-4 border-2 border-brand-secondary/10 rounded-full"></div>
-        <div className="absolute inset-4 border-2 border-b-brand-secondary rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '2s' }}></div>
-        
-        {/* Inner Hub */}
-        <div className="absolute inset-10 bg-gradient-to-br from-brand-primary to-brand-accent rounded-full flex items-center justify-center shadow-lg shadow-brand-primary/40">
-           <svg className="w-6 h-6 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-           </svg>
-        </div>
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
-        {/* Floating Particles */}
-        <div className="absolute -top-4 -left-4 w-2 h-2 bg-brand-accent rounded-full animate-ping"></div>
-        <div className="absolute -bottom-2 -right-2 w-1.5 h-1.5 bg-brand-secondary rounded-full animate-ping" style={{ animationDelay: '1s' }}></div>
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-in text-center p-8 w-full max-w-2xl mx-auto">
+      
+      {/* Visual Abstract Graphic */}
+      <div className="relative w-24 h-24 mb-8">
+        <div className="absolute inset-0 border border-brand-primary/30 rounded-full animate-[spin_3s_linear_infinite]"></div>
+        <div className="absolute inset-2 border border-tech-cyan/30 rounded-full animate-[spin_4s_linear_infinite_reverse]"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+        </div>
       </div>
 
-      <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">Architecting Solution</h3>
-      <p className="text-brand-accent font-mono text-sm uppercase tracking-[0.2em] animate-pulse">
-        {messages[messageIndex]}
-      </p>
+      <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Architect Agent Active</h3>
+      <p className="text-glass-text-secondary text-sm mb-6">Processing high-dimensional architectural vectors...</p>
       
-      <div className="mt-8 flex gap-1 justify-center">
-        {[0, 1, 2, 3, 4].map(i => (
-          <div 
-            key={i} 
-            className="w-8 h-1 bg-slate-800 rounded-full overflow-hidden"
-          >
-            <div 
-              className="h-full bg-brand-primary transition-all duration-500" 
-              style={{ width: messageIndex >= i ? '100%' : '0%' }}
-            ></div>
-          </div>
-        ))}
+      {/* Terminal Window */}
+      <div className="w-full bg-[#0b0e14] rounded-lg border border-glass-border overflow-hidden shadow-2xl text-left font-mono text-xs">
+        <div className="bg-[#151b26] px-4 py-2 border-b border-glass-border flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/50"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/50"></div>
+            <span className="ml-2 text-glass-text-secondary opacity-50">agent_runner.exe</span>
+        </div>
+        <div 
+            ref={scrollRef}
+            className="h-48 overflow-y-auto p-4 space-y-1 text-slate-300"
+        >
+            {logs.map((log, i) => (
+                <div key={i} className="break-words">
+                    <span className="text-tech-cyan mr-2">➜</span>
+                    {log}
+                </div>
+            ))}
+            <div className="animate-pulse text-brand-primary">_</div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default LoadingSpinner;
+export default ActivityTerminal;
