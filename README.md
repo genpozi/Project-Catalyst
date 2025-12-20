@@ -1,15 +1,18 @@
 
-# 0relai (Zero Reliance)
+# 0relai (Zero Reliance) v1.0
+
+![Status](https://img.shields.io/badge/Status-Production_Ready-green?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=flat-square)
+![AI](https://img.shields.io/badge/Powered_by-Gemini_2.0-purple?style=flat-square)
 
 **0relai** is an advanced AI-powered architectural engine designed to transform abstract software ideas into rigorous, production-ready technical blueprints. It acts as a "Meta-Architect," guiding you through strategy, stack selection, data modeling, and security planning before generating a complete developer handover bundle.
-
-![0relai Interface](https://via.placeholder.com/1200x600/0f172a/c084fc?text=0relai+v3.2+Interface)
 
 ## ✨ Core Features
 
 ### 🧠 Hybrid Intelligence
 - **Cloud Architect:** Powered by **Gemini 2.0 Flash Thinking** for deep reasoning and complex system design.
 - **Local Architect (Beta):** Integrated **WebLLM (Gemma 2B)** support for privacy-first, offline drafting running directly in your browser via WebGPU.
+- **Voice Interface:** Real-time bi-directional voice negotiation with the architect using Gemini Live API.
 
 ### 📐 Visual Engineering
 - **Diagram Orchestration:** AI-powered auto-layout for complex Architecture and ERD graphs. "Spaghetti code" becomes clean diagrams instantly.
@@ -17,13 +20,19 @@
 - **Export Studio:** Download high-resolution PNGs of your diagrams for reports.
 
 ### 🚀 The Workflow
-1.  **Multi-Modal Intake:** Voice, Text, and Image analysis for project initiation.
-2.  **Strategic Planning:** Automated persona generation, USP analysis, and user journey mapping.
-3.  **Full-Stack Architecture:** Intelligent stack selection (Frontend, Backend, DB) and **Terraform IaC generation**.
-4.  **Visual Data Modeling:** Interactive Entity-Relationship Diagrams (ERD) and Schema generation (Prisma/SQL).
-5.  **Blueprint Studio:** A dedicated IDE to refine and tweak AI-generated decisions in real-time with **Version History**.
-6.  **Presentation Mode:** Turn your spec into a live, interactive **Pitch Deck** for stakeholders with one click.
-7.  **Code Forge:** Exports a `.zip` bundle with `package.json`, `setup_repo.sh`, scaffold scripts, and documentation.
+1.  **Command Center:** A unified dashboard to track multiple projects, view recent activity, and resume work instantly.
+2.  **Multi-Modal Intake:** Voice, Text, and Image analysis for project initiation.
+3.  **Strategic Planning:** Automated persona generation, USP analysis, and user journey mapping.
+4.  **Full-Stack Architecture:** Intelligent stack selection (Frontend, Backend, DB) and **Terraform IaC generation**.
+5.  **Visual Data Modeling:** Interactive Entity-Relationship Diagrams (ERD) and Schema generation (Prisma/SQL).
+6.  **Blueprint Studio:** A dedicated IDE to refine and tweak AI-generated decisions in real-time with **Version History**.
+7.  **Presentation Mode:** Turn your spec into a live, interactive **Pitch Deck** for stakeholders with one click.
+8.  **Code Forge:** Exports a `.zip` bundle with `package.json`, `setup_repo.sh`, scaffold scripts, and documentation.
+
+## 🛡️ Resilience & Safety
+- **Offline Mode:** Continue viewing and editing local data even when internet connectivity is lost.
+- **Drift Detection:** Analyze your actual codebase against the plan to detect architectural violations.
+- **Auto-Recovery:** Integrated Error Boundaries prevent data loss during crashes.
 
 ## 🛠️ Installation & Setup
 

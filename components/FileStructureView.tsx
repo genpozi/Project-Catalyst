@@ -6,6 +6,7 @@ import { GeminiService } from '../GeminiService';
 import { useProject } from '../ProjectContext';
 import { useToast } from './Toast';
 import CodeEditor from './CodeEditor';
+import DiffViewer from './DiffViewer';
 
 interface FileStructureViewProps {
   structure?: FileNode[];
@@ -83,7 +84,7 @@ const FileItem: React.FC<{
                 </>
             )}
             <button onClick={(e) => handleAction(e, 'delete')} title="Delete" className="p-0.5 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
       </div>
@@ -111,18 +112,27 @@ const FileItem: React.FC<{
 const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, architecture, onUpdate, onContinue, hideActions, onRefine, isRefining = false }) => {
   const { state, dispatch } = useProject();
   const { addToast } = useToast();
+  
   const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
   const [selectedPath, setSelectedPath] = useState<string>('');
+  
+  // Editor State
   const [editorContent, setEditorContent] = useState('');
+  
+  // Diff State
+  const [pendingContent, setPendingContent] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  
   const gemini = React.useMemo(() => new GeminiService(), []);
 
   // Sync editor content when selection changes
   useEffect(() => {
       if (selectedNode) {
           setEditorContent(selectedNode.content || '');
+          setPendingContent(null); // Clear pending diff on node switch
       } else {
           setEditorContent('');
+          setPendingContent(null);
       }
   }, [selectedNode]);
 
@@ -279,15 +289,37 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
       setIsGenerating(true);
       try {
           const content = await gemini.generateFilePreview(selectedNode, state.projectData);
-          setEditorContent(content);
-          // Auto-save
-          selectedNode.content = content;
-          handleSaveContent();
+          
+          if (editorContent && editorContent.trim().length > 0) {
+              // If we already have content, show Diff instead of overwriting
+              setPendingContent(content);
+              addToast("Generated content ready for review", "info");
+          } else {
+              // Direct set if empty
+              setEditorContent(content);
+              selectedNode.content = content;
+              handleSaveContent();
+          }
       } catch (e) {
           addToast("Failed to generate preview", "error");
       } finally {
           setIsGenerating(false);
       }
+  };
+
+  const handleAcceptDiff = () => {
+      if (pendingContent !== null && selectedNode) {
+          setEditorContent(pendingContent);
+          selectedNode.content = pendingContent;
+          handleSaveContent();
+          setPendingContent(null);
+          addToast("Generated content accepted", "success");
+      }
+  };
+
+  const handleDiscardDiff = () => {
+      setPendingContent(null);
+      addToast("Generated content discarded", "info");
   };
 
   // Determine if we should expand all folders (simple heuristic for deep linking)
@@ -360,7 +392,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-glass-text-secondary">{selectedNode.type === 'file' ? '📄' : '📂'}</span>
                             <span className="text-sm font-bold text-white font-mono">{selectedNode.name}</span>
-                            <span className="text-xs text-slate-500 ml-2 italic truncate max-w-[200px]">{selectedNode.description}</span>
+                            {pendingContent && <span className="text-[10px] bg-yellow-500/20 text-yellow-200 px-2 py-0.5 rounded animate-pulse">Review Mode</span>}
                         </div>
                         <div className="flex gap-2 items-center">
                             {linkedArchitectureNode && (
@@ -391,12 +423,41 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                         </div>
                     </div>
 
+                    {/* Diff Actions Header (Visible only when pending content exists) */}
+                    {pendingContent && (
+                        <div className="bg-yellow-900/20 border-b border-yellow-700/30 px-4 py-2 flex items-center justify-between">
+                            <span className="text-xs text-yellow-200">AI generated new content. Review changes below:</span>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={handleDiscardDiff}
+                                    className="px-3 py-1 text-[10px] font-bold bg-slate-700 text-slate-300 hover:text-white rounded hover:bg-slate-600 transition-colors"
+                                >
+                                    Discard
+                                </button>
+                                <button 
+                                    onClick={handleAcceptDiff}
+                                    className="px-3 py-1 text-[10px] font-bold bg-green-600 text-white rounded hover:bg-green-500 transition-colors shadow-lg"
+                                >
+                                    Accept Changes
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Editor Body */}
                     <div className="flex-grow relative bg-[#0b0e14] overflow-hidden">
                         {selectedNode.type === 'folder' ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
                                 <span className="text-4xl mb-4 opacity-50">📂</span>
                                 <p className="text-sm">Folder selected. Choose a file to view content.</p>
+                            </div>
+                        ) : pendingContent ? (
+                            <div className="absolute inset-0">
+                                <DiffViewer 
+                                    oldCode={editorContent} 
+                                    newCode={pendingContent} 
+                                    language={selectedNode.name.split('.').pop()}
+                                />
                             </div>
                         ) : (
                             <CodeEditor 

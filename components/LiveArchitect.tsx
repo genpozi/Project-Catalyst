@@ -27,11 +27,15 @@ const LiveArchitect: React.FC<LiveArchitectProps> = ({ projectData, onClose }) =
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const activeRef = useRef(true);
 
+  // Animation Frame for smoother volume decay
+  const requestRef = useRef<number | undefined>(undefined);
+
   useEffect(() => {
     startSession();
     return () => {
       activeRef.current = false;
       stopSession();
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
   }, []);
 
@@ -110,7 +114,7 @@ const LiveArchitect: React.FC<LiveArchitectProps> = ({ projectData, onClose }) =
       const source = ctx.createMediaStreamSource(streamRef.current);
       sourceRef.current = source;
 
-      // Use ScriptProcessor for raw PCM access (AudioWorklet is better but more complex to setup in single file)
+      // Use ScriptProcessor for raw PCM access
       const processor = ctx.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
@@ -119,12 +123,14 @@ const LiveArchitect: React.FC<LiveArchitectProps> = ({ projectData, onClose }) =
           
           const inputData = e.inputBuffer.getChannelData(0);
           
-          // Simple Volume Visualization
+          // Simple Volume Visualization for User Input
           let sum = 0;
           for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
           const rms = Math.sqrt(sum / inputData.length);
-          // Only set volume if user is speaking (approx)
-          if (!isTalking) setVolume(Math.min(rms * 5, 1)); 
+          
+          if (!isTalking) {
+              setVolume(prev => Math.max(prev * 0.9, Math.min(rms * 5, 1.5)));
+          }
 
           const pcmBlob = createPcmBlob(inputData);
           
@@ -143,8 +149,8 @@ const LiveArchitect: React.FC<LiveArchitectProps> = ({ projectData, onClose }) =
       if (audioData && outputContextRef.current) {
           setIsTalking(true);
           
-          // Visualize model volume (fake it based on chunk arrival)
-          setVolume(Math.random() * 0.5 + 0.5);
+          // Simulate volume for model speech
+          setVolume(1.2 + Math.random() * 0.3);
 
           const ctx = outputContextRef.current;
           nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
@@ -207,20 +213,23 @@ const LiveArchitect: React.FC<LiveArchitectProps> = ({ projectData, onClose }) =
     <div className="flex flex-col h-full bg-[#0b0e14] relative overflow-hidden">
         {/* Background Animation */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-            <div className={`w-64 h-64 rounded-full bg-brand-primary blur-3xl transition-all duration-100 ease-linear`}
-                 style={{ transform: `scale(${1 + volume})` }}></div>
+            <div className={`w-64 h-64 rounded-full bg-brand-primary blur-3xl transition-all duration-300 ease-out`}
+                 style={{ transform: `scale(${1 + volume * 0.5})`, opacity: 0.2 + (volume * 0.2) }}></div>
         </div>
 
         <div className="flex-grow flex flex-col items-center justify-center z-10 p-8 text-center">
             
             {/* Avatar / Visualizer */}
             <div className="relative mb-10">
-                <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${
+                {/* Outer Ring */}
+                <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-200 border-2 ${
                     status === 'error' ? 'bg-red-900/20 border-red-500' :
                     status === 'connecting' ? 'bg-slate-800 animate-pulse border-slate-600' :
                     isTalking ? 'bg-brand-primary/20 border-brand-primary shadow-[0_0_50px_rgba(79,70,229,0.5)]' :
                     'bg-slate-800 border-white/20'
-                } border-2`}>
+                }`}
+                style={{ transform: `scale(${1 + (volume * 0.1)})` }}
+                >
                     <div className={`w-24 h-24 rounded-full bg-slate-950 flex items-center justify-center`}>
                         <span className="text-4xl">
                             {status === 'error' ? '⚠️' : 
@@ -230,11 +239,11 @@ const LiveArchitect: React.FC<LiveArchitectProps> = ({ projectData, onClose }) =
                     </div>
                 </div>
                 
-                {/* Ripples */}
+                {/* Active Ripples */}
                 {status === 'connected' && (
                     <>
-                        <div className={`absolute inset-0 rounded-full border border-brand-primary/30 animate-[ping_2s_linear_infinite] ${isTalking ? 'opacity-100' : 'opacity-0'}`}></div>
-                        <div className={`absolute -inset-4 rounded-full border border-brand-primary/20 animate-[ping_2s_linear_infinite_1s] ${isTalking ? 'opacity-100' : 'opacity-0'}`}></div>
+                        <div className={`absolute inset-0 rounded-full border border-brand-primary/30 ${isTalking ? 'animate-[ping_1.5s_linear_infinite]' : 'opacity-0'}`}></div>
+                        <div className={`absolute -inset-4 rounded-full border border-brand-primary/20 ${isTalking ? 'animate-[ping_2s_linear_infinite_0.5s]' : 'opacity-0'}`}></div>
                     </>
                 )}
             </div>

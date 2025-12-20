@@ -106,7 +106,9 @@ export default function Sidebar({ currentPhase, onPhaseClick, unlockedPhases, is
             ></div>
         )}
 
-        <div className={`
+        <div 
+            id="app-sidebar"
+            className={`
             fixed sm:relative inset-y-0 left-0 z-50
             w-20 border-r border-glass-border flex flex-col items-center py-4 gap-2 overflow-y-auto custom-scrollbar flex-shrink-0 bg-[#0f172a] h-full
             transform transition-transform duration-300 ease-in-out

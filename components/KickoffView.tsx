@@ -8,7 +8,10 @@ import { useProject } from '../ProjectContext';
 import DriftAnalyzer from './DriftAnalyzer';
 import CodebaseViewer from './CodebaseViewer';
 import { getPluginById } from '../utils/plugins';
-import { buildVirtualFileSystem } from '../utils/projectFileSystem';
+import { buildVirtualFileSystem, upsertFileNode, consolidateProjectFiles } from '../utils/projectFileSystem';
+import Confetti from './Confetti';
+import { useToast } from './Toast';
+import { generateMarkdownVault } from '../utils/exportService';
 
 interface KickoffViewProps {
   assets?: string;
@@ -21,9 +24,12 @@ const KickoffView: React.FC<KickoffViewProps> = ({ assets, projectData, onGenera
   const [activeTab, setActiveTab] = useState<'briefing' | 'codebase' | 'devops' | 'verify' | 'download'>('briefing');
   const [isZipping, setIsZipping] = useState(false);
   const [isGeneratingDevOps, setIsGeneratingDevOps] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [isConsolidating, setIsConsolidating] = useState(false);
   
   const gemini = React.useMemo(() => new GeminiService(), []);
   const { dispatch } = useProject();
+  const { addToast } = useToast();
 
   const generateComplianceReport = () => {
       const cl = projectData.securityContext?.complianceChecklist || [];
@@ -55,10 +61,33 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
       try {
           const config = await gemini.generateDevOpsConfig(projectData);
           dispatch({ type: 'UPDATE_PROJECT_DATA', payload: { devOpsConfig: config } });
+          addToast("DevOps configuration generated", "success");
       } catch (e) {
-          alert("Failed to generate DevOps configuration.");
+          addToast("Failed to generate DevOps configuration.", "error");
       } finally {
           setIsGeneratingDevOps(false);
+      }
+  };
+
+  const handleFileUpdate = (path: string, content: string) => {
+      const currentStructure = projectData.fileStructure || [];
+      const newStructure = upsertFileNode(currentStructure, path, content);
+      onUpdateProject({ fileStructure: newStructure });
+      addToast(`Updated ${path}`, "success");
+  };
+
+  const handleConsolidate = () => {
+      if (!confirm("This will merge all generated assets (IaC, Docs, Tasks) into your permanent File Structure. Continue?")) return;
+      
+      setIsConsolidating(true);
+      try {
+          const newStructure = consolidateProjectFiles(projectData);
+          onUpdateProject({ fileStructure: newStructure });
+          addToast("Codebase consolidated successfully", "success");
+      } catch (e) {
+          addToast("Consolidation failed", "error");
+      } finally {
+          setIsConsolidating(false);
       }
   };
 
@@ -125,6 +154,19 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
           }
       }
 
+      // 5. Obsidian Vault Folder (Documentation Site)
+      try {
+          const vaultBlob = await generateMarkdownVault(projectData);
+          const vaultZip = await JSZip.loadAsync(vaultBlob);
+          // Merge vault zip into main zip under docs/vault
+          vaultZip.forEach(async (relativePath, file) => {
+              const content = await file.async('string');
+              zip.file(`docs/vault/${relativePath}`, content);
+          });
+      } catch(e) {
+          console.warn("Vault generation failed", e);
+      }
+
       const content = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(content);
       const a = document.createElement("a");
@@ -134,17 +176,23 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      // Celebrate!
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000);
 
     } catch (e) {
       console.error("Failed to zip", e);
-      alert("Bundle generation failed.");
+      addToast("Bundle generation failed.", "error");
     } finally {
       setIsZipping(false);
     }
   };
 
   return (
-    <div className="animate-slide-in-up h-full flex flex-col">
+    <div className="animate-slide-in-up h-full flex flex-col relative">
+      {showConfetti && <Confetti />}
+      
       <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-brand-text">Project Handover</h2>
           
@@ -219,16 +267,30 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
         {/* TAB: CODEBASE PREVIEW */}
         {activeTab === 'codebase' && (
             <div className="animate-fade-in space-y-4">
-                <div className="bg-slate-800/50 p-4 rounded-xl border border-white/5 flex items-center gap-3">
-                    <div className="text-2xl">💾</div>
-                    <div>
-                        <h3 className="text-white font-bold text-sm">Unified Codebase</h3>
-                        <p className="text-xs text-glass-text-secondary">
-                            Aggregated view of all generated files, including scaffold structure and task-specific code snippets.
-                        </p>
+                <div className="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-3">
+                        <div className="text-2xl">💾</div>
+                        <div>
+                            <h3 className="text-white font-bold text-sm">Unified Codebase</h3>
+                            <p className="text-xs text-glass-text-secondary">
+                                Review and edit all generated files before export.
+                            </p>
+                        </div>
                     </div>
+                    <button 
+                        onClick={handleConsolidate}
+                        disabled={isConsolidating}
+                        className="bg-brand-secondary/20 hover:bg-brand-secondary/40 text-brand-secondary border border-brand-secondary/50 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                        title="Permanently save all AI-generated files into the project structure"
+                    >
+                        {isConsolidating ? <span className="animate-spin">⟳</span> : <span>📥</span>}
+                        Consolidate Assets
+                    </button>
                 </div>
-                <CodebaseViewer projectData={projectData} />
+                <CodebaseViewer 
+                    projectData={projectData} 
+                    onFileUpdate={handleFileUpdate}
+                />
             </div>
         )}
 
@@ -316,7 +378,7 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
                         '.cursorrules (Agent Brain)',
                         'Drift Detection Script',
                         'Git & Docker Configs',
-                        'Task Code Artifacts',
+                        'Full Obsidian Documentation',
                         ].map((item, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm text-slate-400">
                             <svg className="w-4 h-4 text-brand-accent flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>

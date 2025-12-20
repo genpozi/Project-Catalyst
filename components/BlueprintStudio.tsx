@@ -133,6 +133,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   const [isFixingJson, setIsFixingJson] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [compareSnapshot, setCompareSnapshot] = useState<Snapshot | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
 
   const gemini = React.useMemo(() => new GeminiService(), []);
 
@@ -256,7 +257,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   const compareJson = compareSnapshot ? JSON.stringify(compareSnapshot.data[getDataKey(activeTab)], null, 2) || '' : '';
 
   return (
-    <div className="animate-slide-in-up h-full flex flex-col">
+    <div className={`animate-slide-in-up h-full flex flex-col ${focusMode ? 'fixed inset-0 z-[100] bg-[#0b0e14] p-6' : ''}`}>
       {showSnapshots && (
           <SnapshotModal 
              snapshots={projectData.snapshots || []}
@@ -274,6 +275,13 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
           <p className="text-glass-text-secondary text-sm">Refine your specifications before agent rule generation.</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setFocusMode(!focusMode)}
+            className={`px-3 py-2 text-sm font-bold rounded-lg border transition-all ${focusMode ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
+            title="Toggle Focus Mode"
+          >
+            {focusMode ? 'Exit Focus' : 'Focus Mode'}
+          </button>
           <button
             onClick={() => setShowComments(!showComments)}
             className={`px-4 py-2 text-sm font-bold rounded-lg border transition-all flex items-center gap-2 ${showComments ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
@@ -299,13 +307,15 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
           >
             {isCheckingHealth ? <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin"></div> : <span>🛡️ Health Check</span>}
           </button>
-          <button
-            onClick={onContinue}
-            className="px-6 py-2 glass-button-primary text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-all flex items-center gap-2"
-          >
-            <span>Proceed to Rules</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-          </button>
+          {!focusMode && (
+            <button
+                onClick={onContinue}
+                className="px-6 py-2 glass-button-primary text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+            >
+                <span>Proceed to Rules</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Phase, PlanTask } from '../types';
+import { exportAsImage } from '../utils/imageExporter';
 
 interface VisualGanttProps {
   plan: Phase[];
@@ -93,6 +94,7 @@ const TaskEditPopover: React.FC<{
 
 const VisualGantt: React.FC<VisualGanttProps> = ({ plan, onUpdateTask, readOnly = false }) => {
   const [selectedTask, setSelectedTask] = useState<{ id: string; pIdx: number; tIdx: number; x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const processedData = useMemo(() => {
     let currentOffset = 0;
@@ -163,7 +165,7 @@ const VisualGantt: React.FC<VisualGanttProps> = ({ plan, onUpdateTask, readOnly 
   };
 
   return (
-    <div className="bg-[#0b0e14] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px] relative" onClick={() => setSelectedTask(null)}>
+    <div className="bg-[#0b0e14] rounded-xl border border-white/5 overflow-hidden flex flex-col h-[600px] relative" onClick={() => setSelectedTask(null)} ref={containerRef}>
         {/* Popover */}
         {selectedTask && (
             <TaskEditPopover 
@@ -190,8 +192,17 @@ const VisualGantt: React.FC<VisualGanttProps> = ({ plan, onUpdateTask, readOnly 
                     <span className="w-2 h-2 rounded-full bg-green-500"></span> QA
                 </div>
             </div>
-            <div className="text-xs font-bold text-white whitespace-nowrap ml-4">
-                Total: {Math.ceil(totalWidth / 8)} Days
+            
+            <div className="flex items-center gap-4">
+                <div className="text-xs font-bold text-white whitespace-nowrap">
+                    Total: {Math.ceil(totalWidth / 8)} Days
+                </div>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); exportAsImage(containerRef.current, 'roadmap-gantt'); }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-2 py-1 rounded text-[10px] font-bold border border-white/10 ignore-export"
+                >
+                    📷 Export
+                </button>
             </div>
         </div>
 

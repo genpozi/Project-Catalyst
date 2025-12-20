@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { ProjectData } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 import PresentationDeck from './PresentationDeck';
+import { generateMarkdownVault } from '../utils/exportService';
+import { useToast } from './Toast';
 
 interface SpecDocumentProps {
   projectData: ProjectData;
@@ -11,9 +13,31 @@ interface SpecDocumentProps {
 
 const SpecDocument: React.FC<SpecDocumentProps> = ({ projectData, onContinue }) => {
   const [isPresenting, setIsPresenting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const { addToast } = useToast();
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportVault = async () => {
+      setIsExporting(true);
+      try {
+          const blob = await generateMarkdownVault(projectData);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${projectData.name.replace(/[^a-zA-Z0-9]/g, '-')}-Obsidian-Vault.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          addToast("Vault exported successfully", "success");
+      } catch (e) {
+          addToast("Failed to export vault", "error");
+      } finally {
+          setIsExporting(false);
+      }
   };
 
   return (
@@ -24,24 +48,33 @@ const SpecDocument: React.FC<SpecDocumentProps> = ({ projectData, onContinue }) 
 
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl sm:text-3xl font-bold text-brand-text">Project Specification Document</h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsPresenting(true)}
-            className="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-500 transition-all transform hover:scale-105 flex items-center gap-2"
+            className="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-500 transition-all transform hover:scale-105 flex items-center gap-2 text-xs sm:text-sm"
           >
-            <span>📺</span> Present Deck
+            <span>📺</span> Presentation
+          </button>
+          <button 
+            onClick={handleExportVault}
+            disabled={isExporting}
+            className="px-4 py-2 bg-slate-700 text-white font-bold rounded-lg shadow-lg hover:bg-slate-600 transition-all transform hover:scale-105 flex items-center gap-2 text-xs sm:text-sm"
+            title="Export as Obsidian/Markdown Vault"
+          >
+            {isExporting ? 'Zipping...' : '⬇ Obsidian Vault'}
           </button>
           <button 
             onClick={handlePrint}
-            className="px-6 py-2 bg-slate-600 text-white font-bold rounded-lg shadow-lg hover:bg-slate-500 transition-all transform hover:scale-105"
+            className="px-4 py-2 bg-slate-600 text-white font-bold rounded-lg shadow-lg hover:bg-slate-500 transition-all transform hover:scale-105 text-xs sm:text-sm"
           >
-            Print / PDF
+            Print PDF
           </button>
           <button 
             onClick={onContinue}
-            className="px-6 py-2 bg-brand-secondary text-white font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105"
+            className="px-6 py-2 bg-brand-secondary text-white font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105 flex items-center gap-2 text-xs sm:text-sm"
           >
             Proceed to Kickoff
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
           </button>
         </div>
       </div>

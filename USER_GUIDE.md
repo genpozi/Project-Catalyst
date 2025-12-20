@@ -2,64 +2,67 @@
 # 0relai - User Guide
 
 ## Overview
-**0relai** (Zero Reliance) is an intelligent "Meta-Architect" designed to help you go from a vague idea to a fully specified technical blueprint. It doesn't just write code; it plans the *entire* architecture so that when you (or an AI agent) start coding, you do it right the first time.
+**0relai** (Zero Reliance) is your AI-powered "Meta-Architect." It helps you plan, visualize, and specify complex software systems before you write a single line of code.
 
-## Navigation & Interface
-0relai uses a **stepped vertical navigation bar** on the left side of the screen.
-- **Vision:** Input your initial idea.
-- **Strategy:** Review personas and USPs.
-- **Research:** Feasibility analysis.
-- **Stack:** Technical architecture choices and Infrastructure-as-Code (Terraform).
-- **Data:** Database schema and diagrams.
-- **Files:** Project file structure.
-- **Design:** UI/UX tokens, components, and live HTML prototypes.
-- **API:** Endpoint specifications.
-- **Security:** RLS and testing policies.
-- **Studio:** The "God Mode" editor to refine all previous steps and manage versions (Snapshots).
-- **Rules:** The generated instructions for your AI agent.
-- **Plan:** The execution roadmap.
-- **Tasks:** Kanban board for implementation with **Jira/Linear Export**.
-- **Launch:** Download your complete code bundle.
+## 🚀 Getting Started
 
-## Key Features
+### 1. Cloud Sync & Login
+*   Click the **Login** button in the header to sign in via Email (Magic Link).
+*   **Benefits:**
+    *   **Sync:** Access your blueprints on any device.
+    *   **Backup:** Never lose your work if your browser cache clears.
+    *   **Marketplace:** Publish your best architectures to the community.
 
-### 1. Multi-Modal Intake
-*   **Text:** Type your idea in the main input box.
-*   **Image:** Upload a whiteboard sketch, napkin drawing, or wireframe. The AI will analyze visual layout hints.
-*   **Voice:** Click "Voice Input" to speak your idea. The AI will listen, summarize your concept, and auto-detect constraints.
+### 2. The Local Bridge (Optional but Recommended)
+To enable 0relai to write code directly to your computer:
+1.  Go to the **Verify** tab in the **Launch** phase.
+2.  Click "Setup Info".
+3.  Copy the `bridge.js` script to your project folder.
+4.  Run `node bridge.js`.
+5.  0relai will connect automatically via WebSocket.
 
-### 2. Visual Architecture & Diagrams
-*   **Interactive Graphs:** In the Architecture and Data Model views, you can drag nodes to rearrange them.
-*   **✨ Auto-Organize:** Click the "Organize" button to have the AI intelligently untangle your diagram.
-*   **📷 PNG Export:** Download high-resolution images of your architecture to include in external reports.
+---
 
-### 3. Presentation Mode (Pitch Deck)
-*   **The Problem:** You need to explain your technical vision to non-technical stakeholders.
-*   **The Solution:** Click **"Present Deck"** in the Document phase. 0relai transforms your specs into a beautiful, full-screen slide deck covering Strategy, Architecture, Roadmap, and Costs.
+## 🎨 Key Workflows
 
-### 4. Blueprint Studio (Refine & Edit)
-Once the specs are generated, you enter the **Blueprint Studio**.
-*   **Visual vs Code:** Toggle between a friendly UI view and the raw JSON.
-*   **Visual Diff:** Compare current changes against saved Snapshots to see exactly what has changed.
-*   **Refine with AI:** Don't like a decision? Type a command in the input bar.
-    *   *Example:* "Switch the database to PostgreSQL and add a 'comments' table."
+### The "Vision to Spec" Pipeline
+1.  **Vision:** Speak or type your idea. Upload a whiteboard sketch.
+2.  **Strategy:** AI identifies personas and user journeys.
+3.  **Stack:** AI recommends a tech stack (e.g., Next.js + Supabase).
+4.  **Visual Builder:** Drag and drop nodes to refine the architecture.
+5.  **Schema:** Visually design your database tables.
+6.  **Tasks:** AI generates a Kanban board of implementation tasks.
 
-### 5. "Self-Healing" Drift Detection
-In the **Launch** phase (Verify tab), you can audit your actual code against the plan.
-*   **Run `tree`** in your terminal.
-*   **Paste the output** into the Drift Analyzer.
-*   **Analyze:** 0relai will highlight missing files or unexpected additions.
+### The Blueprint Studio
+This is your "God Mode" editor.
+*   **Refine:** Select "Architecture" or "API" tabs.
+*   **Command:** Type instructions like *"Add Redis caching layer"* or *"Change auth to OAuth2"*.
+*   **Diff:** Review changes before accepting them.
 
-### 6. Local Intelligence (Beta)
-*   Go to **Settings** to initialize the Local Engine (WebLLM).
-*   Once loaded (requires ~1.5GB download), you can switch the Assistant Chat to **"Local Architect"**.
-*   This allows you to chat with your blueprint data **offline** without sending prompts to the cloud.
+### Community Marketplace
+*   Click **"Saved"** -> **"Marketplace"** in the dashboard.
+*   Browse blueprints created by other architects.
+*   **Fork:** Click "Fork Blueprint" to copy it to your workspace and customize it.
 
-### 7. The Handover (Kickoff)
-Finally, download the **Developer Bundle (.zip)**.
-It includes:
-*   `setup_repo.sh`: A script to initialize Git and create the GitHub repo.
-*   `package.json` / `requirements.txt`: Your dependency list.
-*   `infrastructure/main.tf`: Terraform configuration.
-*   `.cursorrules`: The brain for your AI coding assistant.
-*   `SPEC.md`: The full human-readable spec.
+### Local Intelligence (Privacy Mode)
+*   Open **Settings** (Gear Icon).
+*   Go to **Intelligence** and download the WebGPU model (~1.5GB).
+*   Switch the Assistant Chat to **"Local Architect"**.
+*   **Result:** Chat with your project data completely offline. No data leaves your machine.
+
+---
+
+## 🛠️ Exporting Your Work
+When you are ready to code:
+1.  Go to the **Launch** phase.
+2.  Click **"Export Bundle"**.
+3.  You get a ZIP file containing:
+    *   `setup_repo.sh`
+    *   `README.md`
+    *   `.cursorrules` (Instructions for AI coding agents)
+    *   Infrastructure code (Terraform/Docker)
+    *   Full documentation (Markdown/Obsidian Vault)
+
+## 🆘 Troubleshooting
+*   **Red Status Bar:** You are offline. Cloud generation is disabled, but Local Intelligence still works.
+*   **Sync Issues:** If cloud sync fails, your data is safe in Local Storage. It will retry automatically.

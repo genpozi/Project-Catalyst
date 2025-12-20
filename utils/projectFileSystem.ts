@@ -1,5 +1,6 @@
 
 import { ProjectData, FileNode, Task } from '../types';
+import { generateTailwindConfig, generateOpenApiSpec } from './codeGenerators';
 
 export interface VirtualFile {
   path: string;
@@ -24,40 +25,16 @@ const flattenFileStructure = (nodes: FileNode[], parentPath = ''): { path: strin
 
 /**
  * Merges all project assets into a unified virtual file system for preview and export.
+ * PRIORITY ORDER (Lowest to Highest):
+ * 1. AI Generators (IaC, DB, DevOps, Docs)
+ * 2. Deterministic Generators (Tailwind, OpenAPI) -> NEW
+ * 3. Task Code Snippets
+ * 4. Explicit File Structure (User Manual Edits)
  */
 export const buildVirtualFileSystem = (project: ProjectData): VirtualFile[] => {
   const files: Map<string, VirtualFile> = new Map();
 
-  // 1. Base Structure from File Tree (Editor Content)
-  if (project.fileStructure) {
-    const flatStructure = flattenFileStructure(project.fileStructure);
-    flatStructure.forEach(({ path, node }) => {
-      if (node.type === 'file') {
-        files.set(path, {
-          path,
-          content: node.content || '', // Content from FileStructureView editor
-          source: node.content ? 'editor' : 'scaffold'
-        });
-      }
-    });
-  }
-
-  // 2. Generated Task Artifacts (Higher Priority)
-  if (project.tasks) {
-    project.tasks.forEach(task => {
-      if (task.codeSnippet && task.codeSnippet.filename && task.codeSnippet.code) {
-        // Normalize path (remove leading . or /)
-        const cleanPath = task.codeSnippet.filename.replace(/^\.\//, '').replace(/^\//, '');
-        files.set(cleanPath, {
-          path: cleanPath,
-          content: task.codeSnippet.code,
-          source: 'task'
-        });
-      }
-    });
-  }
-
-  // 3. Specialized Assets (Highest Priority - Overwrites generic placeholders)
+  // 1. Specialized Assets (AI Generators) - Lowest Priority
   
   // Infrastructure
   if (project.architecture?.iacCode) {
@@ -96,15 +73,63 @@ export const buildVirtualFileSystem = (project: ProjectData): VirtualFile[] => {
     files.set('.cursorrules', { path: '.cursorrules', content: project.agentRules, source: 'generator' });
   }
 
+  // 2. Deterministic Generators (NEW)
+  if (project.designSystem) {
+      const tailwindConfig = generateTailwindConfig(project.designSystem);
+      if (tailwindConfig) {
+          files.set('tailwind.config.js', {
+              path: 'tailwind.config.js',
+              content: tailwindConfig,
+              source: 'generator'
+          });
+      }
+  }
+
+  if (project.apiSpec) {
+      const openApiJson = generateOpenApiSpec(project.apiSpec, project.name);
+      if (openApiJson) {
+          files.set('docs/openapi.json', {
+              path: 'docs/openapi.json',
+              content: openApiJson,
+              source: 'generator'
+          });
+      }
+  }
+
+  // 3. Generated Task Artifacts
+  if (project.tasks) {
+    project.tasks.forEach(task => {
+      if (task.codeSnippet && task.codeSnippet.filename && task.codeSnippet.code) {
+        // Normalize path (remove leading . or /)
+        const cleanPath = task.codeSnippet.filename.replace(/^\.\//, '').replace(/^\//, '');
+        files.set(cleanPath, {
+          path: cleanPath,
+          content: task.codeSnippet.code,
+          source: 'task'
+        });
+      }
+    });
+  }
+
+  // 4. Base Structure from File Tree (User/Editor Content) - Highest Priority
+  if (project.fileStructure) {
+    const flatStructure = flattenFileStructure(project.fileStructure);
+    flatStructure.forEach(({ path, node }) => {
+      if (node.type === 'file' && node.content) {
+        files.set(path, {
+          path,
+          content: node.content,
+          source: 'editor'
+        });
+      }
+    });
+  }
+
   return Array.from(files.values()).sort((a, b) => a.path.localeCompare(b.path));
 };
 
 /**
  * Inserts or updates a file node in the recursive structure given a path string.
- * @param nodes Current root nodes
- * @param filePath Path string (e.g., "src/components/Button.tsx")
- * @param content Content to save
- * @returns New array of nodes
  */
 export const upsertFileNode = (nodes: FileNode[], filePath: string, content: string): FileNode[] => {
   // Normalize path
@@ -137,7 +162,7 @@ export const upsertFileNode = (nodes: FileNode[], filePath: string, content: str
       const newNode: FileNode = {
         name: part,
         type: isFile ? 'file' : 'folder',
-        description: isFile ? 'Generated via Task' : 'Generated Folder',
+        description: isFile ? 'Saved File' : 'Folder',
         children: isFile ? undefined : [],
         content: isFile ? content : undefined
       };
@@ -149,4 +174,19 @@ export const upsertFileNode = (nodes: FileNode[], filePath: string, content: str
   }
   
   return newNodes;
+};
+
+/**
+ * Takes the current virtual file system (which includes generated assets) and
+ * persists EVERYTHING into the project.fileStructure.
+ */
+export const consolidateProjectFiles = (project: ProjectData): FileNode[] => {
+    const vfs = buildVirtualFileSystem(project);
+    let structure = project.fileStructure ? JSON.parse(JSON.stringify(project.fileStructure)) : [];
+
+    vfs.forEach(file => {
+        structure = upsertFileNode(structure, file.path, file.content);
+    });
+
+    return structure;
 };

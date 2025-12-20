@@ -5,6 +5,7 @@ import { FileNode, CLIEvent } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 import { cliSync } from '../utils/CLISyncService';
 import { useProject } from '../ProjectContext';
+import CLIHelpModal from './CLIHelpModal';
 
 interface DriftAnalyzerProps {
   plannedStructure: FileNode[];
@@ -25,6 +26,7 @@ const DriftAnalyzer: React.FC<DriftAnalyzerProps> = ({ plannedStructure, onSyncB
   const [report, setReport] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   
   const gemini = React.useMemo(() => new GeminiService(), []);
   const logsRef = useRef<HTMLDivElement>(null);
@@ -96,6 +98,8 @@ const DriftAnalyzer: React.FC<DriftAnalyzerProps> = ({ plannedStructure, onSyncB
 
   return (
     <div className="space-y-6 animate-fade-in">
+        {showHelp && <CLIHelpModal onClose={() => setShowHelp(false)} />}
+        
         <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/5">
             <div className="flex justify-between items-start mb-6">
                 <div>
@@ -167,9 +171,12 @@ const DriftAnalyzer: React.FC<DriftAnalyzerProps> = ({ plannedStructure, onSyncB
                                         {state.syncStatus === 'connected' ? 'CLI Connected' : state.syncStatus === 'connecting' ? 'Searching for Bridge...' : 'Disconnected'}
                                     </span>
                                 </div>
-                                {state.syncStatus === 'disconnected' && (
-                                    <button onClick={() => cliSync.connect()} className="text-xs text-brand-primary hover:text-white underline">Retry</button>
-                                )}
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowHelp(true)} className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition-colors">Setup Info</button>
+                                    {state.syncStatus === 'disconnected' && (
+                                        <button onClick={() => cliSync.connect()} className="text-xs text-brand-primary hover:text-white underline">Retry</button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Console Output */}
@@ -177,11 +184,14 @@ const DriftAnalyzer: React.FC<DriftAnalyzerProps> = ({ plannedStructure, onSyncB
                                 {state.syncStatus === 'disconnected' && (
                                     <div className="text-center py-10 opacity-50">
                                         <p className="mb-2">Bridge not found.</p>
-                                        <code className="bg-white/10 px-2 py-1 rounded text-white block w-fit mx-auto mb-2">npx @0relai/cli watch</code>
-                                        <p>Run this in your terminal to enable live sync.</p>
-                                        <button onClick={() => cliSync.simulateConnection()} className="mt-4 text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded text-white border border-white/10">
-                                            Run Simulation (Demo)
-                                        </button>
+                                        <div className="flex justify-center gap-2">
+                                            <button onClick={() => setShowHelp(true)} className="mt-4 text-xs bg-brand-primary hover:bg-brand-secondary px-3 py-1.5 rounded text-white shadow-lg font-bold">
+                                                Get Setup Script
+                                            </button>
+                                            <button onClick={() => cliSync.simulateConnection()} className="mt-4 text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded text-white border border-white/10">
+                                                Simulate
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                                 {liveLogs.map((log, i) => (

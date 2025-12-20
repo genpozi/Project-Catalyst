@@ -26,9 +26,16 @@ const StatusBar: React.FC = () => {
   const isSyncing = state.isLoading;
 
   return (
-    <div className="h-7 bg-[#0b0e14] border-t border-glass-border flex items-center justify-between px-3 select-none flex-shrink-0 z-50">
+    <div className={`h-7 border-t border-glass-border flex items-center justify-between px-3 select-none flex-shrink-0 z-50 transition-colors duration-300 ${isOnline ? 'bg-[#0b0e14]' : 'bg-red-900/90'}`}>
       {/* Left Section: Git-like info */}
       <div className="flex items-center gap-4 text-[10px] text-glass-text-secondary font-mono">
+        {!isOnline && (
+            <div className="flex items-center gap-1.5 text-white font-bold animate-pulse">
+                <span className="w-2 h-2 bg-white rounded-full"></span>
+                OFFLINE MODE - LOCAL INTELLIGENCE ONLY
+            </div>
+        )}
+        
         <div className="flex items-center gap-1 hover:text-white cursor-pointer transition-colors">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
             <span className="font-bold text-brand-secondary">main*</span>

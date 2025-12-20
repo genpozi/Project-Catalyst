@@ -5,6 +5,10 @@ import { ProjectData } from '../types';
 import ShareModal from './ShareModal';
 import PluginStore from './PluginStore';
 import SettingsModal from './SettingsModal';
+import AuthModal from './AuthModal';
+import { useToast } from './Toast';
+import { signOut } from '../utils/supabaseClient';
+import PresenceAvatars from './PresenceAvatars';
 
 interface HeaderProps {
   onReset: () => void;
@@ -15,11 +19,16 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onToggleMobileMenu }) => {
   const { state, dispatch } = useProject();
+  const { addToast } = useToast();
   const [showGallery, setShowGallery] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showPlugins, setShowPlugins] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const isAuthenticated = !!state.user;
 
   const handleLoadProject = (id: string) => {
     const fullData = localStorage.getItem(`0relai-proj-${id}`);
@@ -48,6 +57,21 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveTemplate = () => {
+      const name = prompt("Template Name:", state.projectData.name + " Template");
+      if (name) {
+          dispatch({ 
+              type: 'SAVE_TEMPLATE', 
+              payload: { 
+                  name, 
+                  description: state.projectData.initialIdea.substring(0, 100) + "...",
+                  icon: "📐"
+              } 
+          });
+          addToast("Saved as template!", "success");
+      }
   };
 
   const handleImportClick = () => {
@@ -91,6 +115,12 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
       });
   };
 
+  const handleLogout = async () => {
+      await signOut();
+      dispatch({ type: 'SET_USER', payload: null });
+      addToast("Logged out", "info");
+  };
+
   return (
     <header className="h-14 flex justify-between items-center px-4 bg-[#0b0e14] border-b border-glass-border z-50 flex-shrink-0">
       {showShare && (
@@ -107,6 +137,10 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
 
       {showSettings && (
           <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
+
+      {showAuth && (
+          <AuthModal onClose={() => setShowAuth(false)} />
       )}
 
       <div className="flex items-center gap-4">
@@ -137,6 +171,7 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
       {/* Center - Search Trigger */}
       <div className="hidden lg:flex items-center">
          <button 
+           id="cmd-palette-trigger"
            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
            className="flex items-center gap-3 bg-white/5 border border-white/5 hover:border-brand-primary/50 hover:bg-white/10 px-4 py-1.5 rounded-lg text-sm text-glass-text-secondary transition-all w-64 justify-between"
            aria-label="Search (Cmd+K)"
@@ -157,19 +192,30 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
           className="hidden" 
         />
         
-        {/* Collaborators Stack */}
-        <div className="hidden lg:flex -space-x-2 mr-2">
-            {state.projectData.collaborators?.slice(0, 3).map((c) => (
-                <div key={c.id} className="w-7 h-7 rounded-full bg-slate-700 border-2 border-[#0b0e14] flex items-center justify-center text-xs cursor-help" title={`${c.name} (${c.role})`}>
-                    {c.avatar}
+        {/* Real-time Presence Avatars */}
+        <PresenceAvatars users={state.onlineUsers} currentUserId={state.user?.id} />
+
+        {/* Auth / User Status */}
+        {isAuthenticated ? (
+            <div className="flex items-center gap-2 mr-2">
+                <div 
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-secondary to-brand-accent flex items-center justify-center text-xs font-bold text-white cursor-pointer border border-white/20 hover:border-white transition-colors"
+                    onClick={handleLogout}
+                    title="Sign Out"
+                >
+                    {state.user?.email?.charAt(0).toUpperCase()}
                 </div>
-            ))}
-            {(state.projectData.collaborators?.length || 0) > 3 && (
-                <div className="w-7 h-7 rounded-full bg-slate-800 border-2 border-[#0b0e14] flex items-center justify-center text-[9px] text-white">
-                    +{state.projectData.collaborators!.length - 3}
-                </div>
-            )}
-        </div>
+            </div>
+        ) : (
+            <button 
+                onClick={() => setShowAuth(true)}
+                className="mr-2 px-3 py-1.5 text-xs font-bold bg-white/5 hover:bg-brand-primary/20 text-white border border-white/10 hover:border-brand-primary/50 rounded transition-all flex items-center gap-2"
+            >
+                <span>🔐</span> <span className="hidden sm:inline">Login</span>
+            </button>
+        )}
+
+        <div className="w-px h-4 bg-white/10 mx-1 hidden sm:block"></div>
 
         <button 
             onClick={() => setShowPlugins(true)}
@@ -193,6 +239,7 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
         </button>
         
         <button 
+            id="chat-toggle"
             onClick={onToggleChat}
             className={`p-1.5 rounded transition-all border flex items-center gap-2 px-3 ${isChatOpen ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 text-glass-text-secondary border-white/5 hover:text-white'}`}
             title="Toggle Architect Assistant"
@@ -203,33 +250,32 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
         </button>
 
         <button
+            id="settings-trigger"
             onClick={() => setShowSettings(true)}
             className="p-1.5 rounded transition-all hover:bg-white/10 hover:text-white text-glass-text-secondary"
             title="Settings"
             aria-label="Open Settings"
         >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         </button>
 
         <div className="w-px h-4 bg-white/10 mx-1 hidden sm:block"></div>
 
         <div className="hidden sm:flex items-center bg-white/5 rounded-md border border-white/5 p-0.5">
             <button 
-                onClick={handleImportClick}
+                onClick={handleSaveTemplate}
                 className="p-1.5 text-glass-text-secondary hover:text-white hover:bg-white/10 rounded transition-all"
-                title="Import Project JSON"
-                aria-label="Import Project"
+                title="Save as Template"
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
             </button>
             <div className="w-px h-4 bg-white/10 mx-1"></div>
             <button 
                 onClick={handleExport}
                 className="p-1.5 text-glass-text-secondary hover:text-white hover:bg-white/10 rounded transition-all"
                 title="Export Project JSON"
-                aria-label="Export Project"
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
             </button>
         </div>
 
@@ -257,7 +303,13 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
                       >
                         <div className="flex flex-col overflow-hidden">
                           <span className="text-sm font-semibold text-white truncate">{p.name}</span>
-                          <span className="text-[10px] text-glass-text-secondary">{new Date(p.lastUpdated).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-glass-text-secondary flex items-center gap-1">
+                              {new Date(p.lastUpdated).toLocaleDateString()}
+                              {/* Source Icon */}
+                              <span title={p.source === 'cloud' || p.source === 'byob' ? 'Synced to Cloud' : 'Local Only'}>
+                                  {p.source === 'cloud' || p.source === 'byob' ? '☁️' : '💻'}
+                              </span>
+                          </span>
                         </div>
                         <button 
                           onClick={(e) => handleDelete(e, p.id)}

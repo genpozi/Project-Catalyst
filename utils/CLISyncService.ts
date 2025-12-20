@@ -91,6 +91,20 @@ class CLISyncService {
     };
   }
 
+  public writeFile(path: string, content: string) {
+      if (this.status !== 'connected' || !this.ws) {
+          console.error("Cannot write file: Bridge disconnected");
+          return;
+      }
+      
+      const message = {
+          type: 'write',
+          payload: { path, content }
+      };
+      
+      this.ws.send(JSON.stringify(message));
+  }
+
   private notifyListeners(event: CLIEvent) {
     this.listeners.forEach(l => l(event));
   }

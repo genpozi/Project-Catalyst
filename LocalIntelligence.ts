@@ -1,5 +1,7 @@
 
 import { CreateMLCEngine, MLCEngine, InitProgressCallback } from "@mlc-ai/web-llm";
+import { localVectorStore } from "./utils/simpleVectorStore";
+import { ProjectData } from "./types";
 
 export class LocalIntelligence {
   private static instance: LocalIntelligence;
@@ -40,14 +42,11 @@ export class LocalIntelligence {
     try {
       // Create engine with detailed progress callback
       const initCallback: InitProgressCallback = (report) => {
-          // Parse report.text to guess phase if needed, or just pass text
-          // WebLLM report usually: "Fetching param...", "Loading model..."
           let phase = 'init';
           if (report.text.toLowerCase().includes('fetch')) phase = 'fetch';
           if (report.text.toLowerCase().includes('cache')) phase = 'cache';
           if (report.text.toLowerCase().includes('load')) phase = 'load';
           
-          // progress is 0-1
           onProgress(phase, report.progress, report.text);
       };
 
@@ -65,13 +64,37 @@ export class LocalIntelligence {
     }
   }
 
-  public async chatStream(message: string, onUpdate: (text: string) => void): Promise<string> {
+  // Refresh RAG index with latest project data
+  public indexContext(project: ProjectData) {
+      localVectorStore.indexProject(project);
+  }
+
+  public async chatStream(message: string, onUpdate: (text: string) => void, onContextRetrieved?: (docs: string[]) => void): Promise<string> {
     if (!this.engine || !this.isReady) {
       throw new Error("Local Intelligence Engine not ready.");
     }
 
+    // RAG Step
+    const contextHits = localVectorStore.search(message, 3);
+    let contextString = "";
+    
+    if (contextHits.length > 0) {
+        contextString = "\n\nRelevant Context from Project:\n" + 
+            contextHits.map(h => `--- ${h.title} ---\n${h.content.substring(0, 500)}...`).join('\n');
+        
+        if (onContextRetrieved) {
+            onContextRetrieved(contextHits.map(h => h.title));
+        }
+    }
+
+    const systemPrompt = `You are 0relai, an offline software architect. 
+    Use the provided context to answer user questions about their project.
+    If the context doesn't contain the answer, use your general knowledge but mention that you are guessing.
+    Be concise.
+    ${contextString}`;
+
     const messages = [
-      { role: "system", content: "You are 0relai, a technical software architect. Be concise and precise." },
+      { role: "system", content: systemPrompt },
       { role: "user", content: message }
     ];
 

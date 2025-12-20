@@ -1,7 +1,7 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useProject } from '../ProjectContext';
-import { ProjectData, AppPhase } from '../types';
+import { ProjectData, AppPhase, ActivityItem, ProjectTemplate } from '../types';
 import MarketplaceDetail from './MarketplaceDetail';
 
 interface IdeaInputProps {
@@ -45,17 +45,53 @@ const STARTER_TEMPLATES = [
     }
 ];
 
-// Mock Activity Data
-const ACTIVITIES = [
-    { id: 1, user: 'Sarah L.', action: 'published', project: 'Fintech Dashboard', time: '2m ago', avatar: '👩‍💻' },
-    { id: 2, user: 'DevBot', action: 'generated', project: 'Docker Config', time: '15m ago', avatar: '🤖' },
-    { id: 3, user: 'Mike R.', action: 'forked', project: 'E-Commerce Headless', time: '1h ago', avatar: '👨‍💻' },
-    { id: 4, user: 'System', action: 'alert', project: 'Security Audit Failed', time: '3h ago', avatar: '⚠️' },
-];
+// Activity Feed Component
+const ActivityFeed: React.FC<{ activities: ActivityItem[] }> = ({ activities }) => {
+    return (
+        <div className="h-full flex flex-col">
+            <h3 className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider mb-6 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Live Activity
+            </h3>
+            <div className="space-y-6 relative flex-grow overflow-y-auto custom-scrollbar pr-2">
+                {/* Timeline Line */}
+                <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-slate-800"></div>
+                
+                {activities.length === 0 ? (
+                    <div className="text-xs text-slate-500 pl-8">No recent activity.</div>
+                ) : (
+                    activities.map((item) => (
+                        <div key={item.id} className="relative pl-8">
+                            <div className={`absolute left-0 top-0 w-6 h-6 rounded-full border-2 border-[#0f172a] flex items-center justify-center text-[10px] z-10 ${
+                                item.type === 'create' ? 'bg-blue-500 text-white' :
+                                item.type === 'update' ? 'bg-purple-500 text-white' :
+                                item.type === 'snapshot' ? 'bg-yellow-500 text-black' :
+                                item.type === 'publish' ? 'bg-green-500 text-black' :
+                                'bg-slate-700 text-slate-300'
+                            }`}>
+                                {item.type === 'create' ? '✨' : 
+                                 item.type === 'update' ? '⚡' : 
+                                 item.type === 'snapshot' ? '📸' : 
+                                 item.type === 'publish' ? '🚀' : '🔧'}
+                            </div>
+                            <div className="text-sm text-white font-medium">
+                                {item.message}
+                            </div>
+                            {item.projectName && <div className="text-xs text-brand-secondary mt-0.5 truncate">{item.projectName}</div>}
+                            <div className="text-[10px] text-glass-text-secondary mt-1">
+                                {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
 
-const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnalyzingAudio }) => {
+const Dashboard: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnalyzingAudio }) => {
   const { state, dispatch } = useProject();
-  const [activeTab, setActiveTab] = useState<'new' | 'marketplace' | 'saved'>('new');
+  const [activeTab, setActiveTab] = useState<'overview' | 'new' | 'templates' | 'marketplace'>('overview');
   const [selectedMarketplaceItem, setSelectedMarketplaceItem] = useState<ProjectData | null>(null);
   
   // Form State
@@ -68,6 +104,14 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Initialize View based on state
+  useEffect(() => {
+      // If user has no projects, default to 'new' tab
+      if (state.projectsList.length === 0 && activeTab === 'overview') {
+          setActiveTab('new');
+      }
+  }, [state.projectsList.length]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -128,6 +172,25 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
       setActiveTab('new');
   };
 
+  const handleUseCustomTemplate = (t: ProjectTemplate) => {
+      // Load template data as a new project
+      const newProject = {
+          ...t.projectData,
+          id: `new-${Date.now()}`,
+          name: `${t.name} (New)`,
+          lastUpdated: Date.now()
+      };
+      dispatch({ type: 'LOAD_PROJECT', payload: newProject as ProjectData });
+      dispatch({ type: 'SET_PHASE', payload: AppPhase.BRAINSTORM });
+  };
+
+  const handleDeleteTemplate = (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      if(confirm('Delete this template?')) {
+          dispatch({ type: 'DELETE_TEMPLATE', payload: id });
+      }
+  };
+
   const handleForkProject = (project: ProjectData) => {
       dispatch({ type: 'IMPORT_FROM_MARKETPLACE', payload: project });
       setSelectedMarketplaceItem(null);
@@ -137,22 +200,19 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
     const fullData = localStorage.getItem(`0relai-proj-${id}`);
     if (fullData) {
       dispatch({ type: 'LOAD_PROJECT', payload: JSON.parse(fullData) });
+      // Logic to jump to last active phase would go here if tracked
+      dispatch({ type: 'SET_PHASE', payload: AppPhase.BRAINSTORM }); 
     }
   };
 
-  const handleDeleteProject = (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
-      if(window.confirm("Are you sure you want to delete this project?")) {
-          dispatch({ type: 'DELETE_PROJECT', payload: id });
-          localStorage.removeItem(`0relai-proj-${id}`);
-      }
+  const handleNavigate = (phase: AppPhase) => {
+      dispatch({ type: 'SET_PHASE', payload: phase });
   };
 
   const handleLike = (e: React.MouseEvent | null, id: string) => {
       if(e) e.stopPropagation();
       dispatch({ type: 'LIKE_PROJECT', payload: id });
       
-      // Update local state if detail view is open
       if(selectedMarketplaceItem && selectedMarketplaceItem.id === id) {
           setSelectedMarketplaceItem({
               ...selectedMarketplaceItem,
@@ -161,15 +221,85 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
       }
   };
 
-  // Helper to estimate progress for saved projects
-  const getProjectProgress = (p: any) => {
-      // In a real app we'd store progress meta, but here we can infer or mock it
-      // Let's assume the name might contain " (Fork)" etc or just randomize for demo if data missing
-      return Math.floor(Math.random() * 80) + 10;
+  // --- Components ---
+
+  const ResumeCard = () => {
+      const lastProject = state.projectsList.length > 0 ? state.projectsList[0] : null;
+      if (!lastProject) return null;
+
+      return (
+          <div className="bg-gradient-to-r from-brand-primary/20 to-blue-900/20 border border-brand-primary/30 rounded-2xl p-6 relative overflow-hidden group hover:border-brand-primary/50 transition-all cursor-pointer" onClick={() => handleLoadProject(lastProject.id)}>
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M14.754 10c.966.696 2.536 1.04 4.096 1.04 1.56 0 3.13-.344 4.096-1.04.966-.696 1.054-1.88.054-2.88-1-1-2.536-1.04-4.096-1.04-1.56 0-3.13.04-4.096 1.04-.966 1-.912 2.184.054 2.88zM6.697 12c-1.324-.764-2.536-1.04-4.096-1.04-1.56 0-2.828.344-4.096 1.04-.966.696-1.054 1.88-.054 2.88 1 1 2.536 1.04 4.096 1.04 1.56 0 3.13-.04 4.096-1.04.966-1 .912-2.184-.054-2.88z" /></svg>
+              </div>
+              
+              <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] uppercase font-bold bg-brand-primary text-white px-2 py-0.5 rounded">Current Project</span>
+                      <span className="text-xs text-glass-text-secondary">Last edited {new Date(lastProject.lastUpdated).toLocaleDateString()}</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">{lastProject.name}</h3>
+                  <p className="text-sm text-blue-200 mb-6 max-w-md">Resume your architectural session. The last snapshot is ready.</p>
+                  
+                  <button className="bg-white text-brand-dark px-6 py-2 rounded-lg font-bold text-sm hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-lg">
+                      <span>Resume Session</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                  </button>
+              </div>
+          </div>
+      );
   };
 
+  const QuickActions = () => {
+      // Only show if user has an active project context
+      if (!state.projectData.id || state.projectData.id.startsWith('temp')) return null;
+
+      const actions = [
+          { label: 'Add Knowledge Doc', icon: '🧠', action: () => handleNavigate(AppPhase.KNOWLEDGE_BASE) },
+          { label: 'Edit Architecture', icon: '✨', action: () => handleNavigate(AppPhase.ARCHITECTURE) },
+          { label: 'Refine Data Model', icon: '🗄️', action: () => handleNavigate(AppPhase.DATAMODEL) },
+          { label: 'Review Tasks', icon: '✅', action: () => handleNavigate(AppPhase.WORKSPACE) }
+      ];
+
+      return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              {actions.map((act, i) => (
+                  <button 
+                    key={i} 
+                    onClick={act.action}
+                    className="bg-slate-900/50 border border-white/5 p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 hover:border-brand-primary/30 transition-all group"
+                  >
+                      <span className="text-xl group-hover:scale-110 transition-transform">{act.icon}</span>
+                      <span className="text-xs font-bold text-slate-300 group-hover:text-white">{act.label}</span>
+                  </button>
+              ))}
+          </div>
+      );
+  };
+
+  const StatsRow = () => (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-slate-900/50 border border-white/5 p-4 rounded-xl">
+              <div className="text-[10px] uppercase font-bold text-glass-text-secondary mb-1">Total Blueprints</div>
+              <div className="text-2xl font-bold text-white">{state.projectsList.length}</div>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 p-4 rounded-xl">
+              <div className="text-[10px] uppercase font-bold text-glass-text-secondary mb-1">Marketplace Assets</div>
+              <div className="text-2xl font-bold text-white">{state.marketplace.length}</div>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 p-4 rounded-xl">
+              <div className="text-[10px] uppercase font-bold text-glass-text-secondary mb-1">Active Tasks</div>
+              <div className="text-2xl font-bold text-white">{state.projectData.tasks?.length || 0}</div>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 p-4 rounded-xl">
+              <div className="text-[10px] uppercase font-bold text-glass-text-secondary mb-1">Sync Status</div>
+              <div className="text-2xl font-bold text-white">{state.user ? 'Cloud' : 'Local'}</div>
+          </div>
+      </div>
+  );
+
   return (
-    <div className="animate-slide-in-up flex gap-8">
+    <div className="animate-slide-in-up flex gap-8 h-full">
       {selectedMarketplaceItem && (
           <MarketplaceDetail 
             project={selectedMarketplaceItem}
@@ -179,192 +309,267 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
           />
       )}
 
-      <div className="flex-grow">
-        <div className="flex flex-col items-center mb-10 text-center">
-            <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-brand-secondary mb-4 tracking-tight">
-                Architect Your Vision
-            </h1>
-            <p className="text-glass-text-secondary max-w-xl text-lg">
-                From abstract idea to production-ready blueprint in minutes. 
-                Powered by Gemini 2.0 Flash Thinking.
-            </p>
-        </div>
-
-        {/* Main Navigation Tabs */}
-        <div className="flex justify-center mb-8">
+      {/* Main Content Area */}
+      <div className="flex-grow flex flex-col h-full overflow-hidden">
+        
+        {/* Navigation Header */}
+        <div className="flex items-center justify-between mb-8 flex-shrink-0">
+            <div>
+                <h1 className="text-3xl font-black text-white tracking-tight">Architect Dashboard</h1>
+                <p className="text-glass-text-secondary text-sm">Welcome back, Architect.</p>
+            </div>
+            
             <div className="bg-brand-panel p-1 rounded-xl border border-glass-border inline-flex">
                 <button 
-                    onClick={() => setActiveTab('new')}
-                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'new' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                    onClick={() => setActiveTab('overview')}
+                    className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'overview' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
                 >
-                    ✨ New Blueprint
+                    <span>🏠</span> Overview
+                </button>
+                <button 
+                    onClick={() => setActiveTab('new')}
+                    className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'new' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                >
+                    <span>✨</span> Create
+                </button>
+                <button 
+                    onClick={() => setActiveTab('templates')}
+                    className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'templates' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                >
+                    <span>📐</span> Templates
                 </button>
                 <button 
                     onClick={() => setActiveTab('marketplace')}
-                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'marketplace' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                    className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'marketplace' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
                 >
-                    🏢 Community & Templates
-                </button>
-                <button 
-                    onClick={() => setActiveTab('saved')}
-                    className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'saved' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-                >
-                    📂 My Projects
+                    <span>🌍</span> Marketplace
                 </button>
             </div>
         </div>
-        
-        {/* --- TAB: NEW BLUEPRINT --- */}
-        {activeTab === 'new' && (
-            <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl mx-auto">
-                {/* Row 1: Type & Voice */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    <div className="md:col-span-7">
-                        <div className="bg-glass-surface rounded-2xl p-1 border border-glass-border flex flex-col h-full">
-                            <label className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider px-4 py-2">Project Type</label>
-                            <div className="relative flex-grow">
-                                <select 
-                                    value={projectType}
-                                    onChange={(e) => setProjectType(e.target.value)}
-                                    className="w-full h-full bg-transparent text-white px-4 py-3 rounded-xl focus:outline-none focus:bg-white/5 appearance-none text-lg font-medium cursor-pointer"
-                                >
-                                    <option className="bg-slate-900">Web Application</option>
-                                    <option className="bg-slate-900">Mobile App (iOS/Android)</option>
-                                    <option className="bg-slate-900">API / Backend Service</option>
-                                    <option className="bg-slate-900">CLI Tool</option>
-                                    <option className="bg-slate-900">Desktop Application</option>
-                                    <option className="bg-slate-900">Game</option>
-                                    <option className="bg-slate-900">AI/ML Model</option>
-                                </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-glass-text-secondary">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                                </div>
+
+        <div className="flex-grow overflow-y-auto custom-scrollbar pr-2">
+            
+            {/* OVERVIEW TAB */}
+            {activeTab === 'overview' && (
+                <div className="space-y-8 animate-fade-in">
+                    <ResumeCard />
+                    <QuickActions />
+                    <StatsRow />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Recent Projects List */}
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-white text-lg">Recent Projects</h3>
+                                <button onClick={() => setActiveTab('new')} className="text-xs text-brand-secondary hover:text-white transition-colors">+ New Project</button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {state.projectsList.length === 0 ? (
+                                    <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center">
+                                        <p className="text-slate-500 text-sm mb-4">No projects yet.</p>
+                                        <button onClick={() => setActiveTab('new')} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-xs font-bold">Create First Blueprint</button>
+                                    </div>
+                                ) : (
+                                    state.projectsList.slice(0, 5).map(p => (
+                                        <div key={p.id} onClick={() => handleLoadProject(p.id)} className="bg-slate-900/50 border border-white/5 p-4 rounded-xl flex items-center justify-between hover:border-brand-primary/30 hover:bg-slate-900 transition-all cursor-pointer group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center text-lg font-bold text-slate-400 group-hover:text-white group-hover:from-brand-secondary group-hover:to-brand-accent transition-all relative">
+                                                    {p.name.charAt(0)}
+                                                    {/* Source Indicator */}
+                                                    <div className="absolute -bottom-1 -right-1 text-[8px] bg-slate-900 rounded-full p-0.5 border border-slate-700" title={p.source === 'cloud' || p.source === 'byob' ? 'Synced to Cloud' : 'Local Only'}>
+                                                        {p.source === 'cloud' || p.source === 'byob' ? '☁️' : '💻'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm group-hover:text-brand-secondary transition-colors">{p.name}</h4>
+                                                    <p className="text-xs text-slate-500">Updated {new Date(p.lastUpdated).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-slate-600 group-hover:translate-x-1 transition-transform">
+                                                ➔
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Templates (Mini) */}
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-white text-lg">Quick Start</h3>
+                                <button onClick={() => setActiveTab('templates')} className="text-xs text-brand-secondary hover:text-white transition-colors">View All</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {STARTER_TEMPLATES.slice(0, 4).map((t, idx) => (
+                                    <div key={idx} onClick={() => handleUseTemplate(t)} className="bg-slate-900/30 border border-white/5 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group">
+                                        <div className="text-2xl mb-2 group-hover:scale-110 transition-transform origin-left">{t.icon}</div>
+                                        <h4 className="font-bold text-white text-xs mb-1">{t.name}</h4>
+                                        <p className="text-[10px] text-slate-500">{t.category}</p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
 
-                    <div className="md:col-span-5">
-                        <button
-                            type="button"
-                            onClick={isRecording ? stopRecording : startRecording}
-                            disabled={isAnalyzingAudio}
-                            className={`w-full h-full min-h-[80px] rounded-2xl border border-glass-border flex flex-col items-center justify-center gap-2 transition-all relative overflow-hidden group ${
-                                isRecording ? 'bg-red-500/10 border-red-500/50' : 'bg-glass-surface hover:bg-white/5'
-                            }`}
-                        >
-                            {isRecording && <div className="absolute inset-0 bg-red-500/10 animate-pulse"></div>}
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isRecording ? 'bg-red-500 text-white' : 'bg-white/10 text-white group-hover:bg-brand-primary group-hover:scale-110 transition-all'}`}>
-                                {isAnalyzingAudio ? (
-                                    <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+            {/* NEW BLUEPRINT TAB */}
+            {activeTab === 'new' && (
+                <div className="animate-fade-in max-w-3xl mx-auto">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div className="md:col-span-7">
+                                <div className="bg-glass-surface rounded-2xl p-1 border border-glass-border flex flex-col h-full">
+                                    <label className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider px-4 py-2">Project Type</label>
+                                    <div className="relative flex-grow">
+                                        <select 
+                                            value={projectType}
+                                            onChange={(e) => setProjectType(e.target.value)}
+                                            className="w-full h-full bg-transparent text-white px-4 py-3 rounded-xl focus:outline-none focus:bg-white/5 appearance-none text-lg font-medium cursor-pointer"
+                                        >
+                                            <option className="bg-slate-900">Web Application</option>
+                                            <option className="bg-slate-900">Mobile App (iOS/Android)</option>
+                                            <option className="bg-slate-900">API / Backend Service</option>
+                                            <option className="bg-slate-900">CLI Tool</option>
+                                            <option className="bg-slate-900">Desktop Application</option>
+                                            <option className="bg-slate-900">Game</option>
+                                            <option className="bg-slate-900">AI/ML Model</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="md:col-span-5">
+                                <button
+                                    type="button"
+                                    onClick={isRecording ? stopRecording : startRecording}
+                                    disabled={isAnalyzingAudio}
+                                    className={`w-full h-full min-h-[80px] rounded-2xl border border-glass-border flex flex-col items-center justify-center gap-2 transition-all relative overflow-hidden group ${
+                                        isRecording ? 'bg-red-500/10 border-red-500/50' : 'bg-glass-surface hover:bg-white/5'
+                                    }`}
+                                >
+                                    {isRecording && <div className="absolute inset-0 bg-red-500/10 animate-pulse"></div>}
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isRecording ? 'bg-red-500 text-white' : 'bg-white/10 text-white group-hover:bg-brand-primary group-hover:scale-110 transition-all'}`}>
+                                        {isAnalyzingAudio ? (
+                                            <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                        )}
+                                    </div>
+                                    <span className={`text-xs font-bold uppercase tracking-wider z-10 ${isRecording ? 'text-red-200' : 'text-glass-text-secondary'}`}>
+                                        {isAnalyzingAudio ? 'Processing...' : isRecording ? 'Stop Recording' : 'Voice Input'}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Core Idea */}
+                        <div className="bg-glass-surface rounded-2xl p-1 border border-glass-border shadow-lg">
+                            <label className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider px-4 py-2 block">Core Concept</label>
+                            <textarea
+                                value={idea}
+                                onChange={(e) => setIdea(e.target.value)}
+                                placeholder="Describe your vision in detail. What problem does it solve? Who is it for?"
+                                className="w-full h-40 bg-transparent text-white px-4 py-2 rounded-xl focus:outline-none focus:bg-white/5 resize-none text-lg leading-relaxed placeholder-white/20"
+                                required
+                            />
+                        </div>
+
+                        {/* Row 3: Constraints & Image */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-glass-surface rounded-2xl p-1 border border-glass-border">
+                                <label className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider px-4 py-2 block">Technical Constraints</label>
+                                <textarea
+                                    value={constraints}
+                                    onChange={(e) => setConstraints(e.target.value)}
+                                    placeholder="e.g. Must use Supabase, No TypeScript..."
+                                    className="w-full h-32 bg-transparent text-white px-4 py-2 rounded-xl focus:outline-none focus:bg-white/5 resize-none leading-relaxed placeholder-white/20 text-sm"
+                                />
+                            </div>
+
+                            <div 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-glass-surface rounded-2xl border border-glass-border border-dashed hover:border-brand-secondary/50 hover:bg-white/5 cursor-pointer transition-all flex flex-col items-center justify-center p-6 relative group h-full"
+                            >
+                                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                                {imageBase64 ? (
+                                    <>
+                                        <img src={`data:image/png;base64,${imageBase64}`} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-2xl opacity-50 group-hover:opacity-30 transition-opacity" />
+                                        <div className="z-10 bg-black/50 px-4 py-2 rounded-full backdrop-blur-md text-sm font-semibold text-white border border-white/10">Change Image</div>
+                                    </>
                                 ) : (
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                    <>
+                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform text-glass-text-secondary group-hover:text-white">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        </div>
+                                        <span className="text-glass-text-secondary group-hover:text-white text-sm font-medium">Attach Wireframe</span>
+                                    </>
                                 )}
                             </div>
-                            <span className={`text-xs font-bold uppercase tracking-wider z-10 ${isRecording ? 'text-red-200' : 'text-glass-text-secondary'}`}>
-                                {isAnalyzingAudio ? 'Processing...' : isRecording ? 'Stop Recording' : 'Voice Input'}
-                            </span>
+                        </div>
+
+                        <button
+                        type="submit"
+                        disabled={!idea.trim() || isAnalyzingAudio}
+                        className="w-full glass-button-primary text-white font-bold text-xl py-5 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:shadow-brand-primary/20 flex items-center justify-center gap-3"
+                        >
+                            <span>Initialize Blueprint</span>
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </button>
-                    </div>
+                    </form>
                 </div>
+            )}
 
-                {/* Core Idea */}
-                <div className="bg-glass-surface rounded-2xl p-1 border border-glass-border shadow-lg">
-                    <label className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider px-4 py-2 block">Core Concept</label>
-                    <textarea
-                        value={idea}
-                        onChange={(e) => setIdea(e.target.value)}
-                        placeholder="Describe your vision in detail. What problem does it solve? Who is it for?"
-                        className="w-full h-40 bg-transparent text-white px-4 py-2 rounded-xl focus:outline-none focus:bg-white/5 resize-none text-lg leading-relaxed placeholder-white/20"
-                        required
-                    />
-                </div>
+            {/* TEMPLATES TAB */}
+            {activeTab === 'templates' && (
+                <div className="animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* New Template Card */}
+                        <div className="bg-slate-900/30 border border-white/5 rounded-xl p-5 border-dashed flex flex-col items-center justify-center text-center">
+                            <div className="text-4xl mb-4 opacity-50">📐</div>
+                            <h3 className="font-bold text-white mb-2">Create Custom Template</h3>
+                            <p className="text-xs text-glass-text-secondary mb-4">Save any active project as a template from the header menu.</p>
+                        </div>
 
-                {/* Row 3: Constraints & Image */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-glass-surface rounded-2xl p-1 border border-glass-border">
-                        <label className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider px-4 py-2 block">Technical Constraints</label>
-                        <textarea
-                            value={constraints}
-                            onChange={(e) => setConstraints(e.target.value)}
-                            placeholder="e.g. Must use Supabase, No TypeScript, Deployment on Vercel..."
-                            className="w-full h-32 bg-transparent text-white px-4 py-2 rounded-xl focus:outline-none focus:bg-white/5 resize-none leading-relaxed placeholder-white/20 text-sm"
-                        />
-                    </div>
-
-                    <div 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="bg-glass-surface rounded-2xl border border-glass-border border-dashed hover:border-brand-secondary/50 hover:bg-white/5 cursor-pointer transition-all flex flex-col items-center justify-center p-6 relative group h-full"
-                    >
-                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                        {imageBase64 ? (
-                            <>
-                                <img src={`data:image/png;base64,${imageBase64}`} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-2xl opacity-50 group-hover:opacity-30 transition-opacity" />
-                                <div className="z-10 bg-black/50 px-4 py-2 rounded-full backdrop-blur-md text-sm font-semibold text-white border border-white/10">Change Image</div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform text-glass-text-secondary group-hover:text-white">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        {/* Saved Templates */}
+                        {state.customTemplates.map(t => (
+                            <div key={t.id} onClick={() => handleUseCustomTemplate(t)} className="bg-slate-800/50 border border-white/5 rounded-xl p-5 hover:bg-slate-800 cursor-pointer group relative overflow-hidden">
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={(e) => handleDeleteTemplate(e, t.id)} className="text-slate-500 hover:text-red-400 p-1">✕</button>
                                 </div>
-                                <span className="text-glass-text-secondary group-hover:text-white text-sm font-medium">Attach Wireframe</span>
-                            </>
-                        )}
-                    </div>
-                </div>
+                                <div className="text-3xl mb-3">{t.icon}</div>
+                                <h3 className="font-bold text-white text-lg mb-1">{t.name}</h3>
+                                <p className="text-xs text-glass-text-secondary line-clamp-2 mb-4">{t.description}</p>
+                                <div className="text-[10px] text-brand-primary font-bold uppercase tracking-wider">My Template</div>
+                            </div>
+                        ))}
 
-                <button
-                type="submit"
-                disabled={!idea.trim() || isAnalyzingAudio}
-                className="w-full glass-button-primary text-white font-bold text-xl py-5 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:shadow-brand-primary/20 flex items-center justify-center gap-3"
-                >
-                    <span>Initialize Blueprint</span>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                </button>
-            </form>
-        )}
-
-        {/* --- TAB: MARKETPLACE --- */}
-        {activeTab === 'marketplace' && (
-            <div className="max-w-6xl mx-auto animate-fade-in">
-                <div className="mb-8">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                        <span>🌱</span> Starter Templates
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* System Templates */}
                         {STARTER_TEMPLATES.map((t, idx) => (
-                            <div key={idx} className="group bg-brand-panel border border-glass-border rounded-xl p-4 hover:border-brand-primary/50 transition-all hover:bg-brand-surface relative overflow-hidden flex flex-col h-full">
-                                <div className="absolute top-0 right-0 px-2 py-0.5 bg-white/5 rounded-bl-lg text-[9px] uppercase font-bold text-glass-text-secondary tracking-widest border-b border-l border-white/5">
-                                    {t.category}
+                            <div key={idx} onClick={() => handleUseTemplate(t)} className="bg-[#0f172a] border border-white/5 rounded-xl p-5 hover:bg-white/5 cursor-pointer group">
+                                <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">{t.icon}</div>
+                                <h3 className="font-bold text-white text-lg mb-1">{t.name}</h3>
+                                <p className="text-xs text-slate-400 line-clamp-2 mb-4">{t.idea}</p>
+                                <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto">
+                                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">{t.category}</span>
+                                    <span className="text-xs text-brand-secondary group-hover:translate-x-1 transition-transform">Start →</span>
                                 </div>
-                                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-2xl mb-3 group-hover:scale-110 transition-transform">
-                                    {t.icon}
-                                </div>
-                                <h3 className="text-sm font-bold text-white mb-1">{t.name}</h3>
-                                <p className="text-xs text-glass-text-secondary mb-3 line-clamp-2 flex-grow">
-                                    {t.idea}
-                                </p>
-                                <button 
-                                    onClick={() => handleUseTemplate(t)}
-                                    className="w-full py-1.5 bg-white/5 hover:bg-brand-primary text-glass-text hover:text-white rounded text-xs font-bold transition-all border border-white/10"
-                                >
-                                    Use Template
-                                </button>
                             </div>
                         ))}
                     </div>
                 </div>
+            )}
 
-                <div>
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                        <span>🌍</span> Community Blueprints
-                    </h3>
-                    {state.marketplace.length === 0 ? (
-                        <div className="text-center py-12 border border-dashed border-glass-border rounded-xl bg-white/5">
-                            <p className="text-glass-text-secondary text-sm">No community projects published yet. Be the first!</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {state.marketplace.map((p) => (
+            {/* MARKETPLACE TAB */}
+            {activeTab === 'marketplace' && (
+                <div className="animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {state.marketplace.length === 0 ? (
+                            <div className="col-span-full text-center py-20 text-slate-500 italic">No community blueprints yet. Be the first to publish!</div>
+                        ) : (
+                            state.marketplace.map((p) => (
                                 <div 
                                     key={p.id} 
                                     onClick={() => setSelectedMarketplaceItem(p)}
@@ -380,13 +585,6 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
                                                 <span className="text-[10px] text-glass-text-secondary">by {p.author || 'Anonymous'}</span>
                                             </div>
                                         </div>
-                                        <div className="flex gap-1">
-                                            {p.tags?.slice(0, 2).map((tag, i) => (
-                                                <span key={i} className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded text-glass-text-secondary border border-white/5">
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
                                     </div>
                                     
                                     <p className="text-xs text-slate-400 mb-4 line-clamp-2 h-8">
@@ -401,103 +599,26 @@ const IdeaInput: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
                                             >
                                                 <span>♥</span> {p.likes || 0}
                                             </button>
-                                            <div className="text-[10px] text-glass-text-secondary">
-                                                {new Date(p.lastUpdated).toLocaleDateString()}
-                                            </div>
                                         </div>
                                         <span className="text-xs text-brand-secondary font-bold group-hover:translate-x-1 transition-transform">
                                             View Details →
                                         </span>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
-            </div>
-        )}
-
-        {/* --- TAB: SAVED PROJECTS --- */}
-        {activeTab === 'saved' && (
-            <div className="max-w-4xl mx-auto animate-fade-in">
-                <div className="space-y-4">
-                    {state.projectsList.length === 0 ? (
-                        <div className="text-center py-20 bg-white/5 rounded-2xl border border-dashed border-white/10">
-                            <span className="text-4xl block mb-4">📂</span>
-                            <p className="text-glass-text-secondary">No saved blueprints found.</p>
-                        </div>
-                    ) : (
-                        state.projectsList.sort((a,b) => b.lastUpdated - a.lastUpdated).map(p => {
-                            const progress = getProjectProgress(p);
-                            return (
-                                <div key={p.id} className="group bg-brand-panel p-4 rounded-xl border border-glass-border hover:border-brand-secondary/50 flex flex-col sm:flex-row items-center justify-between transition-all cursor-pointer gap-4" onClick={() => handleLoadProject(p.id)}>
-                                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-brand-secondary/20 to-brand-accent/20 flex items-center justify-center text-white font-bold border border-white/5 text-lg">
-                                            {p.name.charAt(0)}
-                                        </div>
-                                        <div className="flex-grow">
-                                            <h3 className="font-bold text-white group-hover:text-brand-secondary transition-colors text-lg">{p.name}</h3>
-                                            <div className="flex items-center gap-3 text-xs text-glass-text-secondary mt-1">
-                                                <span>Updated {new Date(p.lastUpdated).toLocaleDateString()}</span>
-                                                <span>•</span>
-                                                <span>~{progress}% Complete</span>
-                                            </div>
-                                            {/* Progress Bar */}
-                                            <div className="h-1.5 w-full bg-slate-800 rounded-full mt-2 overflow-hidden max-w-[200px]">
-                                                <div className="h-full bg-brand-secondary" style={{ width: `${progress}%` }}></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                                        <button 
-                                            onClick={() => handleLoadProject(p.id)}
-                                            className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg transition-all"
-                                        >
-                                            Continue
-                                        </button>
-                                        <button 
-                                            onClick={(e) => handleDeleteProject(e, p.id)}
-                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                            title="Delete Project"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-        )}
+            )}
+        </div>
       </div>
 
-      {/* Activity Feed Sidebar */}
+      {/* Activity Sidebar */}
       <div className="hidden lg:block w-72 bg-[#0f172a] border-l border-glass-border p-6 flex-shrink-0 animate-fade-in">
-          <h3 className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider mb-6 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Team Activity
-          </h3>
-          <div className="space-y-6 relative">
-              {/* Timeline Line */}
-              <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-slate-800"></div>
-              
-              {ACTIVITIES.map((item) => (
-                  <div key={item.id} className="relative pl-8">
-                      <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-slate-800 border-2 border-[#0f172a] flex items-center justify-center text-xs z-10">
-                          {item.avatar}
-                      </div>
-                      <div className="text-sm text-white font-medium">
-                          {item.user} <span className="text-slate-500 font-normal">{item.action}</span>
-                      </div>
-                      <div className="text-xs text-brand-secondary mt-0.5 truncate">{item.project}</div>
-                      <div className="text-[10px] text-glass-text-secondary mt-1">{item.time}</div>
-                  </div>
-              ))}
-          </div>
+          <ActivityFeed activities={state.recentActivities} />
       </div>
     </div>
   );
 };
 
-export default IdeaInput;
+export default Dashboard;

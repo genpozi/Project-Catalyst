@@ -30,6 +30,8 @@ import SpecDocument from './components/SpecDocument';
 import KickoffView from './components/KickoffView';
 import LoadingSpinner from './components/LoadingSpinner';
 import ShortcutsModal from './components/ShortcutsModal';
+import ErrorBoundary from './components/ErrorBoundary';
+import OnboardingTour from './components/OnboardingTour';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useProject();
@@ -287,58 +289,61 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-screen bg-brand-dark text-glass-text font-sans flex flex-col overflow-hidden">
-      <CommandPalette 
-        isOpen={isPaletteOpen} 
-        onClose={() => setIsPaletteOpen(false)} 
-        onNavigate={(phase) => dispatch({ type: 'SET_PHASE', payload: phase })}
-        onReset={() => dispatch({ type: 'RESET_PROJECT' })}
-      />
+    <ErrorBoundary>
+      <div className="h-screen w-screen bg-brand-dark text-glass-text font-sans flex flex-col overflow-hidden">
+        <OnboardingTour />
+        <CommandPalette 
+          isOpen={isPaletteOpen} 
+          onClose={() => setIsPaletteOpen(false)} 
+          onNavigate={(phase) => dispatch({ type: 'SET_PHASE', payload: phase })}
+          onReset={() => dispatch({ type: 'RESET_PROJECT' })}
+        />
 
-      {isShortcutsOpen && (
-          <ShortcutsModal onClose={() => setIsShortcutsOpen(false)} />
-      )}
-      
-      <Header 
-        onReset={() => dispatch({ type: 'RESET_PROJECT' })} 
-        onToggleChat={() => setIsChatOpen(!isChatOpen)}
-        isChatOpen={isChatOpen}
-        onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      />
-      
-      <div className="flex flex-grow overflow-hidden relative">
-          <Sidebar 
-            currentPhase={state.currentPhase} 
-            onPhaseClick={(p) => dispatch({ type: 'SET_PHASE', payload: p })}
-            unlockedPhases={state.unlockedPhases}
-            isOpen={isMobileMenuOpen}
-            onClose={() => setIsMobileMenuOpen(false)}
-          />
-          <main className="flex-grow flex flex-col relative overflow-hidden bg-brand-dark transition-all duration-300">
-            {/* Context Header Area */}
-            <div className="px-6 pt-6 border-b border-glass-border/30 bg-brand-dark z-10 flex-shrink-0">
-                <PhaseStepper currentPhase={state.currentPhase} unlockedPhases={state.unlockedPhases} />
-            </div>
+        {isShortcutsOpen && (
+            <ShortcutsModal onClose={() => setIsShortcutsOpen(false)} />
+        )}
+        
+        <Header 
+          onReset={() => dispatch({ type: 'RESET_PROJECT' })} 
+          onToggleChat={() => setIsChatOpen(!isChatOpen)}
+          isChatOpen={isChatOpen}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        />
+        
+        <div className="flex flex-grow overflow-hidden relative">
+            <Sidebar 
+              currentPhase={state.currentPhase} 
+              onPhaseClick={(p) => dispatch({ type: 'SET_PHASE', payload: p })}
+              unlockedPhases={state.unlockedPhases}
+              isOpen={isMobileMenuOpen}
+              onClose={() => setIsMobileMenuOpen(false)}
+            />
+            <main className="flex-grow flex flex-col relative overflow-hidden bg-brand-dark transition-all duration-300">
+              {/* Context Header Area */}
+              <div className="px-6 pt-6 border-b border-glass-border/30 bg-brand-dark z-10 flex-shrink-0">
+                  <PhaseStepper currentPhase={state.currentPhase} unlockedPhases={state.unlockedPhases} />
+              </div>
+              
+              <div className="flex-grow overflow-y-auto custom-scrollbar p-6 sm:p-10 relative">
+                  {/* Background Decor */}
+                  <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-brand-secondary/5 rounded-full blur-[100px] pointer-events-none"></div>
+                  <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-brand-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
+                  
+                  <div className="relative z-10 max-w-7xl mx-auto h-full pb-20">
+                      {renderPhase()}
+                  </div>
+              </div>
+            </main>
             
-            <div className="flex-grow overflow-y-auto custom-scrollbar p-6 sm:p-10 relative">
-                {/* Background Decor */}
-                <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-brand-secondary/5 rounded-full blur-[100px] pointer-events-none"></div>
-                <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-brand-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
-                
-                <div className="relative z-10 max-w-7xl mx-auto h-full pb-20">
-                    {renderPhase()}
-                </div>
-            </div>
-          </main>
-          
-          {/* Right Sidebar - Architect Chat */}
-          {isChatOpen && (
-             <ArchitectChat onClose={() => setIsChatOpen(false)} />
-          )}
+            {/* Right Sidebar - Architect Chat */}
+            {isChatOpen && (
+              <ArchitectChat onClose={() => setIsChatOpen(false)} />
+            )}
+        </div>
+        
+        <StatusBar />
       </div>
-      
-      <StatusBar />
-    </div>
+    </ErrorBoundary>
   );
 };
 

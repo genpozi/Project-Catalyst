@@ -12,6 +12,7 @@
     <title>0relai</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reactflow@11.11.3/dist/style.css" />
     <script>
       tailwind.config = {
         theme: {
@@ -125,12 +126,17 @@
   <script type="importmap">
 {
   "imports": {
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
     "jszip": "https://esm.run/jszip",
-    "@mlc-ai/web-llm": "https://esm.run/@mlc-ai/web-llm"
+    "@mlc-ai/web-llm": "https://esm.run/@mlc-ai/web-llm",
+    "html-to-image": "https://esm.run/html-to-image",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.89.0",
+    "reactflow": "https://esm.sh/reactflow@11.11.3?external=react,react-dom",
+    "reactflow/": "https://esm.sh/reactflow@^11.11.4/"
   }
 }
 </script>

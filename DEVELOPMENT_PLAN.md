@@ -1,79 +1,61 @@
 
-# 0relai (Zero Reliance) - Master Development Plan
+# 0relai - Master Development Plan & Roadmap
 
 ## 🎯 Executive Summary
-0relai acts as a "Genius Full-Stack Architect," making high-level technical decisions so that human developers and AI coding agents can focus on implementation with zero ambiguity.
-
-## 🗺️ The Roadmap
-
-### ✅ Phase 1: Core Infrastructure (Completed)
-- [x] **State Architecture:** Decoupled `App.tsx` context.
-- [x] **Strict Schemas:** Typed JSON generation via Gemini API.
-- [x] **Persistence:** LocalStorage and IndexedDB implementation.
-
-### ✅ Phase 2: Intelligence & Reasoning (Completed)
-- [x] **Thinking Models:** Integrated Gemini 2.0 Flash Thinking for complex tasks.
-- [x] **Grounded Research:** Google Search integration for up-to-date tech stacks.
-- [x] **Live Architect:** Voice-to-Audio real-time architectural discussions.
-
-### ✅ Phase 3: Visualization & UX (Completed)
-- [x] **Blueprint Studio:** Split-view editor with AI Refinement.
-- [x] **Visual Cortex:** Interactive C4 and ERD diagrams with Mermaid.js.
-- [x] **AI Layout Engine:** Auto-organize nodes and edges using spatial reasoning.
-- [x] **Presentation Deck:** "Pitch Mode" for stakeholder reviews.
-
-### ✅ Phase 4: Ecosystem & Enterprise (Completed)
-- [x] **PWA & Offline:** Service Worker and Manifest implementation.
-- [x] **Plugin System:** Extensible registry for DevOps, Docs, and License generation.
-- [x] **Memory Palace:** RAG integration for custom documentation.
-- [x] **Drift Analysis:** Compare planned file structure vs. actual `tree` output.
+**0relai (Zero Reliance)** is an AI-powered "Meta-Architect" designed to guide developers from abstract ideas to fully specified, production-ready blueprints. It operates on a **Hybrid Intelligence** model, leveraging Cloud AI for reasoning and Local AI for privacy.
 
 ---
 
-## ✅ Phase 5: Local Intelligence (Beta)
-**Goal:** Reduce cloud dependency and enable privacy-first architecture.
+## 🗺️ Completed Foundations (Phases 1-9)
 
-#### **EPIC 24: WebGPU Engine Integration**
-- [x] **Status:** Beta Implementation (Settings & Chat)
-- [x] **Task:** WebGPU Compatibility Check.
-- [x] **Task:** Robust progress UI for model downloads (2GB+).
-- [ ] **Task:** "Privacy Mode" global toggle.
-
-#### **EPIC 25: Hybrid Orchestration**
-- [x] **Task:** Create `IntelligenceRouter` abstraction.
-- [ ] **Task:** Route simple tasks (Brainstorming, Refinement) to Local Engine.
-- [ ] **Task:** Route complex tasks (Architecture, Security, Code) to Cloud Engine.
+- [x] **Core Engine:** Hybrid AI Router (Gemini + WebLLM), Project State Machine.
+- [x] **Visual Suite:** React Flow Architecture & ERD Designers, Gantt Charts.
+- [x] **Data Integrity:** Supabase Sync, Local-First Persistence, Drift Detection.
+- [x] **UX/UI:** Glassmorphic Interface, Toast System, Command Palette.
+- [x] **Resilience:** Retry logic, Error Boundaries, WebGPU compatibility checks.
 
 ---
 
-## ✅ Phase 6: The IDE Bridge (Completed)
-**Goal:** Tighter integration with the developer's local environment.
+## 🔮 EPIC 1: Deep Agentic Capability (The "Magic")
+**Focus:** Individual Developer Super-Powers. "Late 2025" Agent Architecture.
+*Detailed Specification: `EPIC_1_DEEP_AGENTS.md`*
 
-#### **EPIC 26: 0relai CLI**
-- [x] **Task:** Design `CLISyncService` (Frontend Client).
-- [x] **Task:** WebSocket Handshake & State Management.
-- [x] **Task:** Real-time Drift Analysis Dashboard.
-- [ ] **Task:** Implement actual Node.js CLI tool (`@0relai/cli`).
+### Phase 11.1: "The Council" (Multi-Agent Debate)
+Instead of a single chatbot, the user summons a "Council" where specialized agents critique each other before presenting a solution.
+- [ ] **Agent Orchestrator:** Logic to spawn multiple sub-agents (Security, DevOps, Architect) for a single query.
+- [ ] **Debate UI:** A threaded view where users see agents "talking to each other" (e.g., Security Bot flagging a DevOps Bot suggestion).
+- [ ] **Consensus Engine:** A synthesizer step that merges the debate into a final decision.
+
+### Phase 11.2: Tool Use & MCP (Model Context Protocol)
+Agents gain read/write access to the environment via standardized protocols.
+- [ ] **WebContainer Integration:** Run a Node.js sandbox in the browser to validate generated code *before* showing it to the user.
+- [ ] **MCP Client:** Implement client-side Model Context Protocol to standardize how agents read local files (via Bridge) and external docs.
+
+### Phase 11.3: The Git Bridge
+Removing the friction of manual copy-pasting.
+- [ ] **GitHub OAuth:** Link personal GitHub account.
+- [ ] **Repo Tree Reader:** Read remote repositories for context.
+- [ ] **Direct PR Agent:** The agent creates a branch, commits code, and opens a Pull Request with a detailed description.
 
 ---
 
-## ✅ Phase 7: Visual Builder 2.0 (Completed)
-**Goal:** Transform static diagrams into interactive engineering tools.
+## 🏢 EPIC 2: Commercialization & Hardening
+**Focus:** Sustainability, Teams, and Enterprise-Grade Robustness.
+*Research & Requirements: `EPIC_2_COMMERCIALIZATION.md`*
 
-#### **EPIC 27: Spatial Engineering**
-- [x] **Task:** Drag-and-drop Resource Palette for Architecture.
-- [x] **Task:** Edge Protocol Configuration (HTTP, gRPC, etc).
-- [x] **Task:** Persistent ERD Layouts (x/y coordinates).
-- [x] **Task:** Drag-to-Connect Foreign Keys for Schema Building.
-- [x] **Task:** Bi-directional sync between Visual Graph and JSON Spec.
+### Phase 12.1: The Membership Model
+- **Research:** Stripe Connect vs. Standard, Token-based top-ups vs. Flat SaaS.
+- **Implementation:** Tiered feature gating (Free vs. Pro).
+
+### Phase 12.2: Team Dynamics
+- **Research:** RBAC complexity, Shared Workspaces, Concurrent Editing (CRDTs).
+- **Implementation:** Organization management UI, Invite flows.
+
+### Phase 12.3: Security & Compliance
+- **Hardening:** Row Level Security (RLS) audits, API Rate limiting, Data residency compliance.
 
 ---
 
-## 🚀 Phase 8: Polishing & Launch (In Progress)
-**Goal:** Final UX refinements and production readiness.
-
-#### **EPIC 28: Experience Polish**
-- [ ] **Task:** Unified Dashboard with "Recent Activity".
-- [x] **Task:** Global Keyboard Shortcuts overlay.
-- [x] **Task:** Accessibility Audit (ARIA labels).
-- [x] **Task:** Mobile responsiveness (Sidebar Drawer).
+## 📉 Archive
+*   *Phases 1-9 completed.*
+*   *Old Roadmap V2 merged.*

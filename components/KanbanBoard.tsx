@@ -3,6 +3,7 @@ import React, { useCallback, useState } from 'react';
 import { Task, TaskStatus, ProjectData } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 import CodeEditor from './CodeEditor';
+import VirtualList from './VirtualList';
 
 interface KanbanBoardProps {
   tasks: Task[];
@@ -118,6 +119,54 @@ const KanbanColumn: React.FC<{
     [TaskStatus.DONE]: 'bg-green-500'
   }[title];
 
+  // Render Row for VirtualList
+  const renderRow = (task: Task, style: React.CSSProperties) => (
+      <div style={style} className="px-1 py-1.5">
+          <div
+            draggable
+            onDragStart={(e) => onDragStart(e, task)}
+            onClick={() => onTaskClick(task)}
+            className="group bg-[#0b0e14] border border-glass-border rounded hover:border-brand-primary/50 transition-all p-3 cursor-pointer relative h-full flex flex-col"
+          >
+            {/* Header: Role & Priority */}
+            <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-tech-cyan flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        {task.role}
+                    </span>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <div className="p-1 rounded text-glass-text-secondary hover:text-white" title="View Details">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content */}
+            <p className="text-sm text-gray-300 font-medium leading-snug mb-2 line-clamp-2 flex-grow">
+                {task.content}
+            </p>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between mt-auto pt-2 border-t border-glass-border/50">
+                <div className="flex gap-2">
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider font-bold ${getPriorityColor(task.priority)}`}>
+                        {task.priority || 'MED'}
+                    </span>
+                    <span className="text-[9px] bg-brand-surface text-glass-text-secondary px-1.5 py-0.5 rounded border border-glass-border font-mono">
+                        {task.estimatedDuration}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1">
+                    {task.implementationGuide && <div className="w-1.5 h-1.5 rounded-full bg-tech-cyan shadow-[0_0_3px_#06b6d4]"></div>}
+                    {task.codeSnippet && <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_3px_#c084fc]"></div>}
+                </div>
+            </div>
+          </div>
+      </div>
+  );
+
   return (
     <div
       className="bg-brand-panel border border-glass-border rounded-lg p-3 w-full flex-shrink-0 min-h-[500px] flex flex-col"
@@ -141,66 +190,13 @@ const KanbanColumn: React.FC<{
       </div>
 
       {/* Tasks Container */}
-      <div className="space-y-3 flex-grow overflow-y-auto custom-scrollbar pr-1">
-        {tasks.map(task => (
-          <div
-            key={task.id}
-            draggable
-            onDragStart={(e) => onDragStart(e, task)}
-            className="group bg-[#0b0e14] border border-glass-border rounded hover:border-brand-primary/50 transition-all p-3 cursor-pointer relative"
-          >
-            {/* Header: Role & Priority */}
-            <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono text-tech-cyan flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                        {task.role} Agent
-                    </span>
-                </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
-                        className="p-1 hover:bg-brand-surface rounded text-glass-text-secondary hover:text-white" 
-                        title="View Details"
-                    >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                    </button>
-                </div>
-            </div>
-
-            {/* Content */}
-            <p className="text-sm text-gray-300 font-medium leading-snug mb-3 line-clamp-3">
-                {task.content}
-            </p>
-
-            {/* Meta Tags */}
-            <div className="flex flex-wrap gap-2 mb-3">
-                <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider font-bold ${getPriorityColor(task.priority)}`}>
-                    {task.priority || 'MED'}
-                </span>
-                <span className="text-[9px] bg-brand-surface text-glass-text-secondary px-1.5 py-0.5 rounded border border-glass-border font-mono">
-                    {task.estimatedDuration}
-                </span>
-            </div>
-
-            {/* Action Footer (Automaker Style) */}
-            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-glass-border">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
-                    className="flex-1 bg-brand-surface hover:bg-brand-primary/20 hover:text-brand-primary text-xs py-1 rounded border border-glass-border transition-colors flex items-center justify-center gap-1.5 text-glass-text-secondary"
-                >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                    Specs
-                </button>
-                {task.implementationGuide && (
-                    <div className="w-2 h-2 rounded-full bg-tech-cyan shadow-[0_0_5px_#06b6d4]" title="Guide Generated"></div>
-                )}
-                {task.codeSnippet && (
-                    <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_5px_#c084fc]" title="Code Generated"></div>
-                )}
-            </div>
-          </div>
-        ))}
+      <div className="flex-grow overflow-hidden relative">
+          <VirtualList 
+            items={tasks}
+            itemHeight={140} // Fixed height for kanban cards for simplicity
+            renderItem={renderRow}
+            className="h-full custom-scrollbar"
+          />
       </div>
     </div>
   );
@@ -484,7 +480,7 @@ const TaskDetailModal: React.FC<{
                                             </>
                                         ) : (
                                             <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
                                                 <span>Generate Code Artifact</span>
                                             </>
                                         )}

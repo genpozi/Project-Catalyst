@@ -24,6 +24,15 @@ export enum TaskStatus {
   DONE = 'Done'
 }
 
+export interface ActivityItem {
+  id: string;
+  type: 'create' | 'update' | 'snapshot' | 'publish' | 'system';
+  message: string;
+  timestamp: number;
+  projectId?: string;
+  projectName?: string;
+}
+
 export interface ChecklistItem {
   id: string;
   text: string;
@@ -86,11 +95,13 @@ export interface ArchitectureNode {
   id: string;
   x: number;
   y: number;
+  width?: number; // Added for resizing
+  height?: number; // Added for resizing
   type: 'frontend' | 'backend' | 'database' | 'service' | 'deployment' | 'cache' | 'queue' | 'external';
-  label: string; // Persist label in node
+  label: string;
   description?: string;
-  linkedPath?: string; // Path to associated folder/file in FileStructure
-  linkedDocId?: string; // ID of associated Knowledge Doc
+  linkedPath?: string;
+  linkedDocId?: string;
 }
 
 export interface ArchitectureEdge {
@@ -109,8 +120,8 @@ export interface ArchitectureData {
   diagram?: string;
   cloudDiagram?: string;
   iacCode?: string;
-  visualLayout?: ArchitectureNode[]; // Persist node positions
-  visualEdges?: ArchitectureEdge[];  // Persist connections
+  visualLayout?: ArchitectureNode[]; 
+  visualEdges?: ArchitectureEdge[];  
 }
 
 export interface SchemaColumn {
@@ -124,8 +135,8 @@ export interface SchemaTable {
   name: string;
   description: string;
   columns: SchemaColumn[];
-  x?: number; // Persistent X coordinate
-  y?: number; // Persistent Y coordinate
+  x?: number;
+  y?: number;
 }
 
 export interface SchemaData {
@@ -140,7 +151,7 @@ export interface FileNode {
   type: 'file' | 'folder';
   description: string;
   children?: FileNode[];
-  content?: string; // Stored code content
+  content?: string;
 }
 
 export interface ColorPalette {
@@ -190,7 +201,7 @@ export interface TestRequirement {
 
 export interface ComplianceItem {
   id: string;
-  standard: string; // e.g. "SOC2", "GDPR", "HIPAA"
+  standard: string; 
   requirement: string;
   action: string;
   status: 'Pending' | 'Met' | 'N/A';
@@ -223,7 +234,7 @@ export interface CostEstimation {
 export interface DevOpsConfig {
   dockerfile: string;
   dockerCompose: string;
-  ciPipeline: string; // GitHub Actions YAML
+  ciPipeline: string; 
   deploymentGuide: string;
 }
 
@@ -281,6 +292,13 @@ export interface Collaborator {
   status: 'active' | 'offline';
 }
 
+export interface PresenceUser {
+    id: string;
+    name: string;
+    color: string;
+    onlineAt: number;
+}
+
 export interface KnowledgeDoc {
   id: string;
   title: string;
@@ -298,7 +316,6 @@ export interface PluginDefinition {
   author: string;
   icon: string;
   category: 'DevOps' | 'Code' | 'Docs' | 'Security';
-  // Function to execute the plugin logic
   execute: (project: ProjectData) => Promise<{ filename: string; content: string }[]>;
 }
 
@@ -309,6 +326,15 @@ export interface AgentRuleConfig {
   errorHandling: 'TryCatch' | 'ResultType' | 'Defensive';
   testingFramework: string;
   preferredPatterns: string[];
+}
+
+export interface ProjectTemplate {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    projectData: Partial<ProjectData>;
+    createdAt: number;
 }
 
 export interface ProjectData {
@@ -329,7 +355,7 @@ export interface ProjectData {
   costEstimation?: CostEstimation;
   devOpsConfig?: DevOpsConfig;
   agentRules?: string;
-  agentRuleConfig?: AgentRuleConfig; // Config for the rules
+  agentRuleConfig?: AgentRuleConfig; 
   actionPlan?: Phase[];
   tasks?: Task[];
   kickoffAssets?: string;
@@ -338,20 +364,18 @@ export interface ProjectData {
   comments?: Comment[];
   collaborators?: Collaborator[];
   lastUpdated: number;
-  // Marketplace Metadata
   isPublished?: boolean;
   author?: string;
   tags?: string[];
   likes?: number;
-  // Ecosystem
-  activePlugins?: string[]; // IDs of installed plugins
+  activePlugins?: string[]; 
 }
 
 export interface LocalEngineState {
     status: 'unloaded' | 'loading' | 'ready' | 'error';
     progress: string;
     progressPhase: 'init' | 'cache' | 'fetch' | 'load';
-    progressValue: number; // 0-1
+    progressValue: number; 
     memoryUsage?: string;
 }
 

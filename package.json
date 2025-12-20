@@ -1,5 +1,5 @@
 {
-  "name": "0relai-main",
+  "name": "0relai-control",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,10 @@
     "react": "^19.2.0",
     "@google/genai": "^1.29.1",
     "jszip": "latest",
-    "@mlc-ai/web-llm": "latest"
+    "@mlc-ai/web-llm": "latest",
+    "html-to-image": "latest",
+    "@supabase/supabase-js": "^2.89.0",
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

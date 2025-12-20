@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { ApiSpecification } from '../types';
 import RefineBar from './RefineBar';
 import VisualApiDesigner from './VisualApiDesigner';
+import { generateOpenApiSpec } from '../utils/codeGenerators';
+import CodeEditor from './CodeEditor';
+import { useProject } from '../ProjectContext';
 
 interface ApiSpecViewProps {
   apiSpec?: ApiSpecification;
@@ -29,7 +32,8 @@ const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
 };
 
 const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue, hideActions, onRefine, isRefining = false }) => {
-  const [activeTab, setActiveTab] = useState<'visual' | 'docs'>('visual');
+  const { state } = useProject();
+  const [activeTab, setActiveTab] = useState<'visual' | 'docs' | 'openapi'>('visual');
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   if (!apiSpec) return null;
@@ -37,6 +41,8 @@ const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue
   const handleUpdate = (updatedSpec: ApiSpecification) => {
       if(onUpdate) onUpdate(updatedSpec);
   };
+
+  const openApiYaml = generateOpenApiSpec(apiSpec, state.projectData.name);
 
   return (
     <div className="animate-slide-in-up">
@@ -73,6 +79,12 @@ const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue
                 className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'docs' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
             >
                 Documentation
+            </button>
+            <button 
+                onClick={() => setActiveTab('openapi')}
+                className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'openapi' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+            >
+                OpenAPI (JSON)
             </button>
         </div>
       </div>
@@ -141,6 +153,23 @@ const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue
             </div>
             ))}
         </div>
+      )}
+
+      {activeTab === 'openapi' && (
+          <div className="h-[600px] mb-8 bg-[#0b0e14] rounded-2xl border border-white/10 overflow-hidden flex flex-col">
+              <div className="bg-slate-900 px-4 py-2 border-b border-white/5 flex justify-between items-center">
+                  <span className="text-xs font-mono text-brand-accent">openapi.json</span>
+                  <button 
+                      onClick={() => navigator.clipboard.writeText(openApiYaml)}
+                      className="text-xs bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded transition-all"
+                  >
+                      Copy JSON
+                  </button>
+              </div>
+              <div className="flex-grow relative">
+                  <CodeEditor value={openApiYaml} language="json" readOnly={true} />
+              </div>
+          </div>
       )}
 
       {!hideActions && (

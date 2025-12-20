@@ -5,6 +5,8 @@ import RefineBar from './RefineBar';
 import { useProject } from '../ProjectContext';
 import { GeminiService } from '../GeminiService';
 import VisualDesignEditor from './VisualDesignEditor';
+import { generateTailwindConfig } from '../utils/codeGenerators';
+import CodeEditor from './CodeEditor';
 
 interface DesignSystemViewProps {
   designSystem?: DesignSystem;
@@ -15,7 +17,7 @@ interface DesignSystemViewProps {
 }
 
 const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onContinue, hideActions, onRefine, isRefining = false }) => {
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'config'>('editor');
   const [isGeneratingWireframe, setIsGeneratingWireframe] = useState(false);
   const { dispatch, state } = useProject();
   const gemini = React.useMemo(() => new GeminiService(), []);
@@ -40,6 +42,8 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
     }
   };
 
+  const configCode = generateTailwindConfig(designSystem);
+
   return (
     <div className="animate-slide-in-up flex flex-col h-full">
       {!hideActions && (
@@ -61,6 +65,12 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
                 >
                   HTML Prototype
                 </button>
+                <button 
+                  onClick={() => setActiveTab('config')}
+                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'config' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                >
+                  Config
+                </button>
             </div>
           </div>
       )}
@@ -76,11 +86,11 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
       )}
 
       <div className="flex-grow overflow-y-auto custom-scrollbar">
-        {activeTab === 'editor' ? (
+        {activeTab === 'editor' && (
             <div className="animate-fade-in space-y-8">
                 <VisualDesignEditor system={designSystem} onUpdate={handleUpdate} />
                 
-                {/* Core Component Specs (Read Only for now, visual editor focuses on tokens) */}
+                {/* Core Component Specs */}
                 <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/5">
                     <h3 className="text-xl font-bold text-brand-accent mb-6 border-b border-white/10 pb-4 uppercase tracking-widest text-xs">Core Component Library</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -102,7 +112,9 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
                     </div>
                 </div>
             </div>
-        ) : (
+        )}
+
+        {activeTab === 'preview' && (
             <div className="animate-fade-in h-[600px] bg-white rounded-3xl overflow-hidden border border-white/10 relative">
                  {designSystem.wireframeCode ? (
                     <>
@@ -144,6 +156,23 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
                         </button>
                     </div>
                  )}
+            </div>
+        )}
+
+        {activeTab === 'config' && (
+            <div className="animate-fade-in h-[600px] bg-[#0b0e14] rounded-2xl border border-white/10 overflow-hidden flex flex-col">
+                <div className="bg-slate-900 px-4 py-2 border-b border-white/5 flex justify-between items-center">
+                    <span className="text-xs font-mono text-brand-accent">tailwind.config.js</span>
+                    <button 
+                        onClick={() => navigator.clipboard.writeText(configCode)}
+                        className="text-xs bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 rounded transition-all"
+                    >
+                        Copy
+                    </button>
+                </div>
+                <div className="flex-grow relative">
+                    <CodeEditor value={configCode} language="javascript" readOnly={true} />
+                </div>
             </div>
         )}
       </div>

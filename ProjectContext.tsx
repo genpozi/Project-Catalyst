@@ -1,8 +1,10 @@
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus } from './types';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo } from 'react';
+import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus, ActivityItem, ProjectTemplate, PresenceUser } from './types';
 import { db } from './utils/db';
 import { cliSync } from './utils/CLISyncService';
+import { cloudStorage } from './utils/cloudStorage';
+import { supabase, getCurrentUser } from './utils/supabaseClient';
 
 interface UIState {
     selectedFilePath?: string;
@@ -16,11 +18,16 @@ interface ProjectState {
   isLoading: boolean;
   error: string | null;
   unlockedPhases: AppPhase[];
-  projectsList: { id: string; name: string; lastUpdated: number }[];
+  projectsList: { id: string; name: string; lastUpdated: number; source?: string }[];
   marketplace: ProjectData[];
+  customTemplates: ProjectTemplate[];
   localEngine: LocalEngineState;
   syncStatus: SyncStatus;
+  recentActivities: ActivityItem[];
   ui: UIState;
+  user: any | null; // Supabase user
+  collaborators: Collaborator[]; // Global list of known users
+  onlineUsers: PresenceUser[]; // Real-time users
 }
 
 type ProjectAction =
@@ -41,6 +48,8 @@ type ProjectAction =
   | { type: 'PUBLISH_PROJECT'; payload: { tags: string[], author: string } }
   | { type: 'LIKE_PROJECT'; payload: string }
   | { type: 'IMPORT_FROM_MARKETPLACE'; payload: ProjectData }
+  | { type: 'SAVE_TEMPLATE'; payload: { name: string; description: string; icon: string } }
+  | { type: 'DELETE_TEMPLATE'; payload: string }
   | { type: 'ADD_KNOWLEDGE_DOC'; payload: KnowledgeDoc }
   | { type: 'DELETE_KNOWLEDGE_DOC'; payload: string }
   | { type: 'SYNC_PROJECTS_LIST'; payload: any[] }
@@ -49,12 +58,22 @@ type ProjectAction =
   | { type: 'SET_SYNC_STATUS'; payload: SyncStatus }
   | { type: 'SET_SELECTED_FILE'; payload: string | undefined }
   | { type: 'SET_SELECTED_DOC'; payload: string | undefined }
-  | { type: 'SET_SELECTED_NODE'; payload: string | undefined };
+  | { type: 'SET_SELECTED_NODE'; payload: string | undefined }
+  | { type: 'ADD_ACTIVITY'; payload: ActivityItem }
+  | { type: 'SET_USER'; payload: any | null }
+  | { type: 'SET_ONLINE_USERS'; payload: PresenceUser[] };
 
 const SAVED_STATE_KEY = '0relai-project-state-v2';
 const MARKETPLACE_KEY = '0relai-marketplace';
+const TEMPLATES_KEY = '0relai-templates';
+const ACTIVITY_KEY = '0relai-activities';
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
+
+const getRandomColor = () => {
+    const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'];
+    return colors[Math.floor(Math.random() * colors.length)];
+};
 
 const createNewProject = (idea: string = ''): ProjectData => ({
   id: generateId(),
@@ -80,6 +99,7 @@ const initialState: ProjectState = {
   unlockedPhases: [AppPhase.IDEA],
   projectsList: [],
   marketplace: [],
+  customTemplates: [],
   localEngine: {
       status: 'unloaded',
       progress: '',
@@ -87,13 +107,21 @@ const initialState: ProjectState = {
       progressPhase: 'init'
   },
   syncStatus: 'disconnected',
-  ui: {}
+  recentActivities: [],
+  ui: {},
+  user: null,
+  collaborators: [],
+  onlineUsers: []
 };
 
 const projectReducer = (state: ProjectState, action: ProjectAction): ProjectState => {
+  let newState = { ...state };
+  let newActivity: ActivityItem | null = null;
+
   switch (action.type) {
     case 'SET_PHASE':
-      return { ...state, currentPhase: action.payload };
+      newState.currentPhase = action.payload;
+      break;
     case 'UPDATE_PROJECT_DATA':
       const updatedData = { ...state.projectData, ...action.payload, lastUpdated: Date.now() };
       // Auto-unlock logic
@@ -117,35 +145,40 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
              if (!unlocked.includes(phase)) unlocked.push(phase);
         }
       });
-      return { ...state, projectData: updatedData, unlockedPhases: Array.from(new Set(unlocked)) };
+      newState.projectData = updatedData;
+      newState.unlockedPhases = Array.from(new Set(unlocked));
+      
+      // Auto-log updates if significant
+      if (action.payload.architecture) newActivity = { id: generateId(), type: 'update', message: `Updated Architecture`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
+      break;
     case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
+      newState.isLoading = action.payload;
+      break;
     case 'SET_ERROR':
-      return { ...state, error: action.payload };
+      newState.error = action.payload;
+      break;
     case 'RESET_PROJECT':
-      return { 
-          ...state, 
-          projectData: createNewProject(), 
-          currentPhase: AppPhase.IDEA,
-          unlockedPhases: [AppPhase.IDEA],
-          ui: {}
-      };
+      const newProj = createNewProject();
+      newState.projectData = newProj;
+      newState.currentPhase = AppPhase.IDEA;
+      newState.unlockedPhases = [AppPhase.IDEA];
+      newState.ui = {};
+      newActivity = { id: generateId(), type: 'create', message: `Started new project`, timestamp: Date.now(), projectId: newProj.id, projectName: newProj.name };
+      break;
     case 'LOAD_PROJECT':
-      return { 
-        ...state, 
-        projectData: action.payload, 
-        currentPhase: AppPhase.IDEA,
-        unlockedPhases: [AppPhase.IDEA],
-        ui: {}
-      };
+      newState.projectData = action.payload;
+      newState.currentPhase = AppPhase.IDEA;
+      newState.unlockedPhases = [AppPhase.IDEA]; // Re-calced on next update or could be stored
+      newState.ui = {};
+      // newActivity = { id: generateId(), type: 'system', message: `Loaded project`, timestamp: Date.now(), projectId: action.payload.id, projectName: action.payload.name };
+      break;
     case 'DELETE_PROJECT':
-      return {
-        ...state,
-        projectsList: state.projectsList.filter(p => p.id !== action.payload)
-      };
+      newState.projectsList = state.projectsList.filter(p => p.id !== action.payload);
+      newActivity = { id: generateId(), type: 'system', message: `Deleted project`, timestamp: Date.now() };
+      break;
     case 'UNLOCK_PHASE':
-      return { ...state, unlockedPhases: Array.from(new Set([...state.unlockedPhases, action.payload])) };
-    
+      newState.unlockedPhases = Array.from(new Set([...state.unlockedPhases, action.payload]));
+      break;
     case 'CREATE_SNAPSHOT': {
       const { name, description } = action.payload;
       const { snapshots, comments, ...currentState } = state.projectData;
@@ -156,21 +189,17 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
         timestamp: Date.now(),
         data: JSON.parse(JSON.stringify(currentState))
       };
-      return {
-        ...state,
-        projectData: {
+      newState.projectData = {
           ...state.projectData,
           snapshots: [...(state.projectData.snapshots || []), newSnapshot]
-        }
       };
+      newActivity = { id: generateId(), type: 'snapshot', message: `Created snapshot: ${name}`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
+      break;
     }
-
     case 'RESTORE_SNAPSHOT': {
       const snapshotToRestore = state.projectData.snapshots?.find(s => s.id === action.payload);
       if (!snapshotToRestore) return state;
-      return {
-        ...state,
-        projectData: {
+      newState.projectData = {
           ...state.projectData,
           ...snapshotToRestore.data,
           snapshots: state.projectData.snapshots,
@@ -179,49 +208,37 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
           initialIdea: state.projectData.initialIdea,
           comments: state.projectData.comments,
           collaborators: state.projectData.collaborators
-        }
       };
+      newActivity = { id: generateId(), type: 'snapshot', message: `Restored snapshot: ${snapshotToRestore.name}`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
+      break;
     }
-
     case 'DELETE_SNAPSHOT': {
-      return {
-        ...state,
-        projectData: {
+      newState.projectData = {
           ...state.projectData,
           snapshots: state.projectData.snapshots?.filter(s => s.id !== action.payload) || []
-        }
       };
+      break;
     }
-
     case 'ADD_COMMENT':
-      return {
-        ...state,
-        projectData: {
+      newState.projectData = {
           ...state.projectData,
           comments: [...(state.projectData.comments || []), action.payload]
-        }
       };
-
+      break;
     case 'RESOLVE_COMMENT':
-      return {
-        ...state,
-        projectData: {
+      newState.projectData = {
           ...state.projectData,
           comments: state.projectData.comments?.map(c => 
             c.id === action.payload ? { ...c, resolved: !c.resolved } : c
           ) || []
-        }
       };
-
+      break;
     case 'ADD_COLLABORATOR':
-      return {
-        ...state,
-        projectData: {
+      newState.projectData = {
           ...state.projectData,
           collaborators: [...(state.projectData.collaborators || []), action.payload]
-        }
       };
-
+      break;
     case 'PUBLISH_PROJECT': {
         const publishedCopy: ProjectData = {
             ...state.projectData,
@@ -237,21 +254,19 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
         };
         const newMarketplace = [publishedCopy, ...state.marketplace];
         localStorage.setItem(MARKETPLACE_KEY, JSON.stringify(newMarketplace));
-        return {
-            ...state,
-            projectData: { ...state.projectData, isPublished: true },
-            marketplace: newMarketplace
-        };
+        newState.projectData = { ...state.projectData, isPublished: true };
+        newState.marketplace = newMarketplace;
+        newActivity = { id: generateId(), type: 'publish', message: `Published blueprint`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
+        break;
     }
-
     case 'LIKE_PROJECT': {
         const newMarketplace = state.marketplace.map(p => 
             p.id === action.payload ? { ...p, likes: (p.likes || 0) + 1 } : p
         );
         localStorage.setItem(MARKETPLACE_KEY, JSON.stringify(newMarketplace));
-        return { ...state, marketplace: newMarketplace };
+        newState.marketplace = newMarketplace;
+        break;
     }
-
     case 'IMPORT_FROM_MARKETPLACE': {
         const newProject: ProjectData = {
             ...action.payload,
@@ -265,72 +280,105 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
                 { id: 'me', name: 'You', email: 'you@example.com', role: 'Owner', avatar: '😎', status: 'active' }
             ]
         };
-        return {
-            ...state,
-            projectData: newProject,
-            currentPhase: AppPhase.IDEA,
-            unlockedPhases: [AppPhase.IDEA]
-        };
+        newState.projectData = newProject;
+        newState.currentPhase = AppPhase.IDEA;
+        newState.unlockedPhases = [AppPhase.IDEA];
+        newActivity = { id: generateId(), type: 'create', message: `Forked "${action.payload.name}"`, timestamp: Date.now(), projectId: newProject.id, projectName: newProject.name };
+        break;
     }
-
+    case 'SAVE_TEMPLATE': {
+        const { name, description, icon } = action.payload;
+        // Clean project data for template (remove IDs, comments, history)
+        const templateData = { ...state.projectData };
+        delete (templateData as any).id;
+        delete templateData.chatHistory;
+        delete templateData.comments;
+        delete templateData.snapshots;
+        delete templateData.collaborators;
+        
+        const newTemplate: ProjectTemplate = {
+            id: generateId(),
+            name,
+            description,
+            icon,
+            projectData: templateData,
+            createdAt: Date.now()
+        };
+        const updatedTemplates = [...state.customTemplates, newTemplate];
+        localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updatedTemplates));
+        newState.customTemplates = updatedTemplates;
+        newActivity = { id: generateId(), type: 'system', message: `Saved template: ${name}`, timestamp: Date.now() };
+        break;
+    }
+    case 'DELETE_TEMPLATE': {
+        const updatedTemplates = state.customTemplates.filter(t => t.id !== action.payload);
+        localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updatedTemplates));
+        newState.customTemplates = updatedTemplates;
+        break;
+    }
     case 'ADD_KNOWLEDGE_DOC':
-        return {
-            ...state,
-            projectData: {
-                ...state.projectData,
-                knowledgeBase: [...(state.projectData.knowledgeBase || []), action.payload]
-            }
+        newState.projectData = {
+            ...state.projectData,
+            knowledgeBase: [...(state.projectData.knowledgeBase || []), action.payload]
         };
-
+        break;
     case 'DELETE_KNOWLEDGE_DOC':
-        return {
-            ...state,
-            projectData: {
-                ...state.projectData,
-                knowledgeBase: state.projectData.knowledgeBase?.filter(doc => doc.id !== action.payload) || []
-            }
+        newState.projectData = {
+            ...state.projectData,
+            knowledgeBase: state.projectData.knowledgeBase?.filter(doc => doc.id !== action.payload) || []
         };
-
+        break;
     case 'SYNC_PROJECTS_LIST':
-        return { ...state, projectsList: action.payload };
-
+        newState.projectsList = action.payload;
+        break;
     case 'TOGGLE_PLUGIN': {
         const currentPlugins = state.projectData.activePlugins || [];
         const isEnabled = currentPlugins.includes(action.payload);
         const newPlugins = isEnabled 
             ? currentPlugins.filter(id => id !== action.payload)
             : [...currentPlugins, action.payload];
-        
-        return {
-            ...state,
-            projectData: {
-                ...state.projectData,
-                activePlugins: newPlugins
-            }
+        newState.projectData = {
+            ...state.projectData,
+            activePlugins: newPlugins
         };
+        break;
     }
-
     case 'UPDATE_LOCAL_ENGINE':
-        return {
-            ...state,
-            localEngine: { ...state.localEngine, ...action.payload }
-        };
-
+        newState.localEngine = { ...state.localEngine, ...action.payload };
+        break;
     case 'SET_SYNC_STATUS':
-        return { ...state, syncStatus: action.payload };
-
+        newState.syncStatus = action.payload;
+        break;
     case 'SET_SELECTED_FILE':
-        return { ...state, ui: { ...state.ui, selectedFilePath: action.payload, selectedDocId: undefined, selectedNodeId: undefined } };
-
+        newState.ui = { ...state.ui, selectedFilePath: action.payload, selectedDocId: undefined, selectedNodeId: undefined };
+        break;
     case 'SET_SELECTED_DOC':
-        return { ...state, ui: { ...state.ui, selectedDocId: action.payload, selectedFilePath: undefined, selectedNodeId: undefined } };
-
+        newState.ui = { ...state.ui, selectedDocId: action.payload, selectedFilePath: undefined, selectedNodeId: undefined };
+        break;
     case 'SET_SELECTED_NODE':
-        return { ...state, ui: { ...state.ui, selectedNodeId: action.payload, selectedFilePath: undefined, selectedDocId: undefined } };
-
+        newState.ui = { ...state.ui, selectedNodeId: action.payload, selectedFilePath: undefined, selectedDocId: undefined };
+        break;
+    case 'ADD_ACTIVITY':
+        newActivity = action.payload;
+        break;
+    case 'SET_USER':
+        newState.user = action.payload;
+        break;
+    case 'SET_ONLINE_USERS':
+        newState.onlineUsers = action.payload;
+        break;
     default:
       return state;
   }
+
+  // Activity Log Update
+  if (newActivity) {
+      const updatedActivities = [newActivity, ...state.recentActivities].slice(0, 50); // Keep last 50
+      newState.recentActivities = updatedActivities;
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(updatedActivities));
+  }
+
+  return newState;
 };
 
 const ProjectContext = createContext<{
@@ -352,15 +400,39 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
                 dispatch({ type: 'SET_SYNC_STATUS', payload: status });
             });
 
+            // Check for logged in user
+            const user = await getCurrentUser();
+            dispatch({ type: 'SET_USER', payload: user });
+
+            // Listen for auth state changes
+            supabase.auth.onAuthStateChange(async (event, session) => {
+                dispatch({ type: 'SET_USER', payload: session?.user || null });
+                
+                // Refresh project list whenever auth state changes
+                const updatedList = await cloudStorage.listProjects();
+                dispatch({ type: 'SYNC_PROJECTS_LIST', payload: updatedList });
+            });
+
             const marketplace = JSON.parse(localStorage.getItem(MARKETPLACE_KEY) || '[]');
-            const projectsList = await db.getAllProjectsMeta();
+            const templates = JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]');
+            const activities = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || '[]');
+            
+            // Restore activities to state
+            activities.forEach((a: ActivityItem) => dispatch({ type: 'ADD_ACTIVITY', payload: a }));
+            
+            // Initial state population for non-db things
+            state.marketplace = marketplace;
+            state.customTemplates = templates;
+
+            // Load Projects from Cloud/Local via Storage Service
+            const projectsList = await cloudStorage.listProjects();
             dispatch({ type: 'SYNC_PROJECTS_LIST', payload: projectsList });
 
             const savedStateStr = localStorage.getItem(SAVED_STATE_KEY);
             if (savedStateStr) {
                 const savedState = JSON.parse(savedStateStr);
                 if (savedState.projectData && savedState.projectData.id) {
-                    const fullProject = await db.getProject(savedState.projectData.id);
+                    const fullProject = await cloudStorage.loadProject(savedState.projectData.id);
                     if (fullProject) {
                         dispatch({ type: 'LOAD_PROJECT', payload: fullProject });
                         dispatch({ type: 'SET_PHASE', payload: savedState.currentPhase });
@@ -375,7 +447,50 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     init();
   }, []);
 
-  // Save changes to DB
+  // Presence Tracking Effect
+  useEffect(() => {
+      // Use 'global' room for simple presence or project-specific if we had a cloud ID
+      // For now, we broadcast to a global 'lobby' for demo purposes, 
+      // or a specific room if project is cloud-synced.
+      const roomId = state.projectData.id?.startsWith('pub-') ? 'lobby' : `room_${state.projectData.id}`;
+      
+      const channel = supabase.channel(roomId);
+      
+      channel
+        .on('presence', { event: 'sync' }, () => {
+            const newState = channel.presenceState();
+            // Transform presence state object to array
+            const users: PresenceUser[] = [];
+            Object.values(newState).forEach((presences: any) => {
+                presences.forEach((p: any) => {
+                    users.push({
+                        id: p.user_id,
+                        name: p.name,
+                        color: p.color,
+                        onlineAt: p.online_at
+                    });
+                });
+            });
+            dispatch({ type: 'SET_ONLINE_USERS', payload: users });
+        })
+        .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                const userColor = getRandomColor();
+                await channel.track({
+                    user_id: state.user?.id || `anon-${Math.random().toString(36).substr(2, 5)}`,
+                    name: state.user?.email?.split('@')[0] || 'Guest Architect',
+                    color: userColor,
+                    online_at: Date.now()
+                });
+            }
+        });
+
+      return () => {
+          supabase.removeChannel(channel);
+      };
+  }, [state.projectData.id, state.user]); // Re-subscribe if project or user changes
+
+  // Save changes to DB (and Cloud if enabled)
   useEffect(() => {
     localStorage.setItem(SAVED_STATE_KEY, JSON.stringify({
       currentPhase: state.currentPhase,
@@ -383,21 +498,26 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       unlockedPhases: state.unlockedPhases
     }));
 
-    const saveToDB = async () => {
+    const saveToStorage = async () => {
         if (state.projectData.id && !state.projectData.id.startsWith('pub-')) {
-            await db.saveProject(state.projectData);
-            const list = await db.getAllProjectsMeta();
+            await cloudStorage.saveProject(state.projectData);
+            // Refresh list to show updated timestamps or new cloud icons
+            const list = await cloudStorage.listProjects();
             dispatch({ type: 'SYNC_PROJECTS_LIST', payload: list });
         }
     };
     
-    const timeout = setTimeout(saveToDB, 1000);
+    // Auto-save debounce
+    const timeout = setTimeout(saveToStorage, 2000); 
     return () => clearTimeout(timeout);
 
   }, [state.projectData, state.currentPhase, state.unlockedPhases]);
 
+  // Performance Optimization: Memoize the context value
+  const contextValue = useMemo(() => ({ state, dispatch }), [state]);
+
   return (
-    <ProjectContext.Provider value={{ state, dispatch }}>
+    <ProjectContext.Provider value={contextValue}>
       {children}
     </ProjectContext.Provider>
   );
