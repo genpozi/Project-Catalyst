@@ -16,7 +16,10 @@
     "@mlc-ai/web-llm": "latest",
     "html-to-image": "latest",
     "@supabase/supabase-js": "^2.89.0",
-    "reactflow": "^11.11.4"
+    "reactflow": "^11.11.4",
+    "@webcontainer/api": "latest",
+    "xterm": "latest",
+    "xterm-addon-fit": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

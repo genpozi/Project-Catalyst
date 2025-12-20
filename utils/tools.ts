@@ -1,5 +1,4 @@
-
-import { FunctionDeclaration, SchemaType, Type } from '@google/genai';
+import { FunctionDeclaration, Type } from '@google/genai';
 import { ProjectData } from '../types';
 import { localVectorStore } from './simpleVectorStore';
 

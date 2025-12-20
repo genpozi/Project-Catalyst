@@ -11,7 +11,7 @@ export interface VirtualFile {
 /**
  * Flattens the recursive file structure into a list of paths
  */
-const flattenFileStructure = (nodes: FileNode[], parentPath = ''): { path: string, node: FileNode }[] => {
+export const flattenFileStructure = (nodes: FileNode[], parentPath = ''): { path: string, node: FileNode }[] => {
   let result: { path: string, node: FileNode }[] = [];
   nodes.forEach(node => {
     const currentPath = parentPath ? `${parentPath}/${node.name}` : node.name;

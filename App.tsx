@@ -34,6 +34,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import OnboardingTour from './components/OnboardingTour';
 import UpgradeModal from './components/UpgradeModal';
 import OrganizationModal from './components/OrganizationModal';
+import DevConsole from './components/DevConsole';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useProject();
@@ -43,6 +44,7 @@ const AppContent: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showDevConsole, setShowDevConsole] = useState(false);
   
   const gemini = useMemo(() => new GeminiService(), []);
 
@@ -64,6 +66,11 @@ const AppContent: React.FC = () => {
       if (e.key === '?' && !e.target?.toString().includes('Input') && !e.target?.toString().includes('TextArea')) {
           e.preventDefault();
           setIsShortcutsOpen(prev => !prev);
+      }
+      // Toggle Dev Console
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+          e.preventDefault();
+          setShowDevConsole(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -313,6 +320,10 @@ const AppContent: React.FC = () => {
             <OrganizationModal onClose={() => dispatch({ type: 'TRIGGER_ORG_MODAL', payload: false })} />
         )}
         
+        {showDevConsole && (
+            <DevConsole onClose={() => setShowDevConsole(false)} />
+        )}
+        
         <Header 
           onReset={() => dispatch({ type: 'RESET_PROJECT' })} 
           onToggleChat={() => setIsChatOpen(!isChatOpen)}
@@ -332,6 +343,17 @@ const AppContent: React.FC = () => {
               {/* Context Header Area */}
               <div className="px-6 pt-6 border-b border-glass-border/30 bg-brand-dark z-10 flex-shrink-0">
                   <PhaseStepper currentPhase={state.currentPhase} unlockedPhases={state.unlockedPhases} />
+                  
+                  {/* Floating Toggle for Dev Console if closed */}
+                  {!showDevConsole && (
+                      <button 
+                          onClick={() => setShowDevConsole(true)}
+                          className="absolute right-6 top-6 bg-white/5 hover:bg-white/10 text-white p-2 rounded-lg transition-all"
+                          title="Open Dev Console (Cmd+J)"
+                      >
+                          ⚡
+                      </button>
+                  )}
               </div>
               
               <div className="flex-grow overflow-y-auto custom-scrollbar p-6 sm:p-10 relative">
