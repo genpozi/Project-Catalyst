@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MarkdownRenderer from './MarkdownRenderer';
-import { ProjectData } from '../types';
+import { ProjectData, GitHubConfig } from '../types';
 import JSZip from 'jszip';
 import { GeminiService } from '../GeminiService';
 import { useProject } from '../ProjectContext';
@@ -12,6 +12,7 @@ import { buildVirtualFileSystem, upsertFileNode, consolidateProjectFiles } from 
 import Confetti from './Confetti';
 import { useToast } from './Toast';
 import { generateMarkdownVault } from '../utils/exportService';
+import { ghSync } from '../utils/githubSync';
 
 interface KickoffViewProps {
   assets?: string;
@@ -23,13 +24,30 @@ interface KickoffViewProps {
 const KickoffView: React.FC<KickoffViewProps> = ({ assets, projectData, onGenerate, onUpdateProject }) => {
   const [activeTab, setActiveTab] = useState<'briefing' | 'codebase' | 'devops' | 'verify' | 'download'>('briefing');
   const [isZipping, setIsZipping] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
   const [isGeneratingDevOps, setIsGeneratingDevOps] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
   
+  // GH Config State
+  const [repoName, setRepoName] = useState(projectData.githubConfig?.repoName || projectData.name.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+  const [repoOwner, setRepoOwner] = useState(projectData.githubConfig?.repoOwner || '');
+  const [prLink, setPrLink] = useState('');
+  
   const gemini = React.useMemo(() => new GeminiService(), []);
   const { dispatch } = useProject();
   const { addToast } = useToast();
+
+  useEffect(() => {
+      // Auto-fill owner if connected
+      const loadUser = async () => {
+          try {
+              const user = await ghSync.getUser();
+              if (user && !repoOwner) setRepoOwner(user.login);
+          } catch (e) {}
+      };
+      if(!repoOwner) loadUser();
+  }, []);
 
   const generateComplianceReport = () => {
       const cl = projectData.securityContext?.complianceChecklist || [];
@@ -91,80 +109,85 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
       }
   };
 
+  const prepareFiles = async () => {
+      // 1. Generate core manifests freshly
+      // NOTE: In a real app we'd cache these or rely on 'consolidate' having run.
+      // For now we re-generate on export to ensure freshness if user didn't consolidate.
+      
+      const vfs = buildVirtualFileSystem(projectData);
+      
+      // Ensure we have some base files if not present
+      if (!vfs.find(f => f.path === 'README.md')) {
+          vfs.push({
+              path: 'README.md',
+              content: `# ${projectData.name}\n\n${projectData.initialIdea}`,
+              source: 'generator'
+          });
+      }
+      return vfs;
+  };
+
+  const handlePushToGithub = async () => {
+      if (!repoOwner || !repoName) {
+          addToast("Please provide Repo Owner and Name", "error");
+          return;
+      }
+      
+      setIsPushing(true);
+      try {
+          // 1. Update Project Data with config
+          const config: GitHubConfig = { repoOwner, repoName, branch: 'main' };
+          onUpdateProject({ githubConfig: config });
+
+          // 2. Prepare Files
+          const files = await prepareFiles();
+
+          // 3. Push
+          const branchName = `setup/0relai-init-${Date.now()}`;
+          const { prUrl, prNumber } = await ghSync.pushAndPR(
+              repoOwner,
+              repoName,
+              branchName,
+              `feat: Initialize ${projectData.name} blueprint`,
+              files
+          );
+
+          setPrLink(prUrl);
+          addToast(`PR Created! #${prNumber}`, "success");
+          setShowConfetti(true);
+      } catch (e: any) {
+          console.error(e);
+          addToast(e.message || "GitHub sync failed", "error");
+      } finally {
+          setIsPushing(false);
+      }
+  };
+
   const handleDownloadBundle = async () => {
     setIsZipping(true);
     try {
       const zip = new JSZip();
+      const files = await prepareFiles();
 
-      // 1. Generate core manifests freshly to ensure they match final state
-      try {
-        const manifest = await gemini.generateProjectManifest(projectData);
-        if (manifest.filename && manifest.content) {
-            zip.file(manifest.filename, manifest.content);
-        }
-      } catch (e) { console.warn("Manifest gen failed", e); }
-
-      try {
-        const gitScript = await gemini.generateGitScript(projectData);
-        zip.file("setup_repo.sh", gitScript);
-      } catch (e) { console.warn("Git script gen failed", e); }
-
-      try {
-        const driftScript = await gemini.generateDriftCheckScript(projectData);
-        zip.file("drift-check.js", driftScript);
-      } catch (e) { console.warn("Drift script gen failed", e); }
-
-      // 2. Build the Virtual Filesystem from all app state (Tasks, Editors, etc)
-      const vfs = buildVirtualFileSystem(projectData);
-      vfs.forEach(file => {
-          // Avoid overwriting manifest if we just generated it, unless vfs has it from editor
-          if (file.content) {
-              zip.file(file.path, file.content);
-          }
+      files.forEach(file => {
+          zip.file(file.path, file.content);
       });
 
-      // 3. Documentation & Meta (These might duplicate if VFS caught them, but zip handles overwrite)
-      zip.file("README.md", `# ${projectData.name}\n\n${projectData.initialIdea}\n\n## Stack\n- Frontend: ${projectData.architecture?.stack?.frontend || 'N/A'}\n- Backend: ${projectData.architecture?.stack?.backend || 'N/A'}\n- DB: ${projectData.architecture?.stack?.database || 'N/A'}\n\n## Setup\n1. Run \`./setup_repo.sh\` to init git\n2. Run \`docker-compose up\`\n3. Verify Integrity: \`node drift-check.js\``);
-      zip.file("blueprint-metadata.json", JSON.stringify(projectData, null, 2));
+      // Extra docs not in VFS usually
       zip.file("docs/COMPLIANCE_REPORT.md", generateComplianceReport());
-      
-      if (assets) {
-        zip.file("docs/KICKOFF_BRIEFING.md", assets);
-      }
+      if (assets) zip.file("docs/KICKOFF_BRIEFING.md", assets);
 
-      if (projectData.apiSpec) {
-        const apiMd = `# API Specification\n\nAuth: ${projectData.apiSpec.authMechanism}\n\n` + 
-          projectData.apiSpec.endpoints.map(e => `## ${e.method} ${e.path}\n${e.summary}\n\nRequest:\n\`\`\`json\n${e.requestBody || '{}'}\n\`\`\`\n\nResponse:\n\`\`\`json\n${e.responseSuccess || '{}'}\n\`\`\``).join('\n\n');
-        zip.file("docs/API_SPEC.md", apiMd);
-      }
-
-      // 4. Plugins
+      // Plugins
       if (projectData.activePlugins && projectData.activePlugins.length > 0) {
           for (const pluginId of projectData.activePlugins) {
               const plugin = getPluginById(pluginId);
               if (plugin) {
                   try {
-                      console.log(`Executing plugin: ${plugin.name}`);
-                      const files = await plugin.execute(projectData);
-                      files.forEach(f => zip.file(f.filename, f.content));
-                  } catch (e) {
-                      console.error(`Plugin ${plugin.name} failed`, e);
-                  }
+                      const pFiles = await plugin.execute(projectData);
+                      pFiles.forEach(f => zip.file(f.filename, f.content));
+                  } catch (e) {}
               }
           }
-      }
-
-      // 5. Obsidian Vault Folder (Documentation Site)
-      try {
-          const vaultBlob = await generateMarkdownVault(projectData);
-          const vaultZip = await JSZip.loadAsync(vaultBlob);
-          // Merge vault zip into main zip under docs/vault
-          vaultZip.forEach(async (relativePath, file) => {
-              const content = await file.async('string');
-              zip.file(`docs/vault/${relativePath}`, content);
-          });
-      } catch(e) {
-          console.warn("Vault generation failed", e);
       }
 
       const content = await zip.generateAsync({ type: "blob" });
@@ -177,12 +200,10 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      // Celebrate!
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 5000);
 
     } catch (e) {
-      console.error("Failed to zip", e);
       addToast("Bundle generation failed.", "error");
     } finally {
       setIsZipping(false);
@@ -197,36 +218,15 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
           <h2 className="text-2xl sm:text-3xl font-bold text-brand-text">Project Handover</h2>
           
           <div className="bg-white/5 p-1 rounded-xl flex overflow-x-auto max-w-[60vw]">
-                <button 
-                  onClick={() => setActiveTab('briefing')}
-                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === 'briefing' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-                >
-                  Briefing
-                </button>
-                <button 
-                  onClick={() => setActiveTab('codebase')}
-                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === 'codebase' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-                >
-                  Codebase Preview
-                </button>
-                <button 
-                  onClick={() => setActiveTab('devops')}
-                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === 'devops' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-                >
-                  DevOps
-                </button>
-                <button 
-                  onClick={() => setActiveTab('verify')}
-                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === 'verify' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-                >
-                  Verify
-                </button>
-                <button 
-                  onClick={() => setActiveTab('download')}
-                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === 'download' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-                >
-                  Export
-                </button>
+                {['briefing', 'codebase', 'devops', 'verify', 'download'].map(tab => (
+                    <button 
+                        key={tab}
+                        onClick={() => setActiveTab(tab as any)}
+                        className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === tab ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                    >
+                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                ))}
           </div>
       </div>
       
@@ -362,52 +362,66 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
 
         {/* TAB: DOWNLOAD */}
         {activeTab === 'download' && (
-            <div className="flex flex-col items-center justify-center min-h-[400px]">
-                <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-10 rounded-3xl border border-brand-secondary/40 shadow-2xl relative overflow-hidden group max-w-xl w-full text-center">
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-secondary/10 rounded-full blur-3xl group-hover:bg-brand-secondary/20 transition-all"></div>
-                    
-                    <h3 className="text-3xl font-bold text-white mb-4 relative z-10">Ready for Launch</h3>
-                    <p className="text-slate-300 mb-8 relative z-10 leading-relaxed">
-                        This encrypted ZIP contains everything a professional developer or AI agent needs to build your project from scratch.
+            <div className="flex flex-col items-center justify-center min-h-[400px] gap-8">
+                {/* ZIP CARD */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden group max-w-xl w-full text-center">
+                    <h3 className="text-2xl font-bold text-white mb-2 relative z-10">Local Bundle</h3>
+                    <p className="text-slate-400 mb-6 relative z-10 text-sm">
+                        Download the full project scaffold as a ZIP archive.
                     </p>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-left mb-8 relative z-10">
-                        {[
-                        'Complete File Scaffold',
-                        'Dependency Manifests',
-                        '.cursorrules (Agent Brain)',
-                        'Drift Detection Script',
-                        'Git & Docker Configs',
-                        'Full Obsidian Documentation',
-                        ].map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-sm text-slate-400">
-                            <svg className="w-4 h-4 text-brand-accent flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                            <span>{item}</span>
-                        </div>
-                        ))}
-                    </div>
-
                     <button
                         onClick={handleDownloadBundle}
                         disabled={isZipping}
-                        className="w-full py-4 glass-button-primary text-white font-bold rounded-2xl shadow-2xl flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all relative z-10"
+                        className="w-full py-3 glass-button-primary text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 relative z-10"
                     >
-                        {isZipping ? (
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                <span>Minting Codebase...</span>
-                            </div>
-                        ) : (
-                            <>
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                <span className="text-lg">Download ZIP Bundle</span>
-                            </>
-                        )}
+                        {isZipping ? 'Zipping...' : <span>⬇ Download ZIP</span>}
                     </button>
                 </div>
-                
-                <div className="mt-8 text-center text-sm text-glass-text-secondary max-w-md">
-                    <p>After downloading, run <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">./setup_repo.sh</code> to initialize Git and <code className="bg-white/10 px-1 py-0.5 rounded text-white font-mono">node drift-check.js</code> to verify integrity.</p>
+
+                {/* GITHUB CARD */}
+                <div className="bg-[#0d1117] p-8 rounded-3xl border border-slate-700 shadow-2xl relative overflow-hidden group max-w-xl w-full text-center">
+                    <h3 className="text-2xl font-bold text-white mb-2 relative z-10 flex items-center justify-center gap-2">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                        GitHub Integration
+                    </h3>
+                    
+                    {prLink ? (
+                        <div className="mt-4 bg-green-900/20 border border-green-500/30 p-4 rounded-xl">
+                            <p className="text-green-400 font-bold mb-2">🚀 Pull Request Open</p>
+                            <a href={prLink} target="_blank" rel="noreferrer" className="text-xs text-white underline break-all">{prLink}</a>
+                        </div>
+                    ) : (
+                        <div className="mt-4 space-y-3 text-left">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase">Owner</label>
+                                    <input 
+                                        value={repoOwner}
+                                        onChange={(e) => setRepoOwner(e.target.value)}
+                                        className="w-full bg-slate-800 rounded border border-slate-700 px-2 py-1 text-xs text-white"
+                                        placeholder="octocat"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase">Repo Name</label>
+                                    <input 
+                                        value={repoName}
+                                        onChange={(e) => setRepoName(e.target.value)}
+                                        className="w-full bg-slate-800 rounded border border-slate-700 px-2 py-1 text-xs text-white"
+                                        placeholder="my-app"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={handlePushToGithub}
+                                disabled={isPushing}
+                                className="w-full py-2 bg-[#238636] hover:bg-[#2ea043] text-white font-bold rounded-lg transition-all text-xs disabled:opacity-50"
+                            >
+                                {isPushing ? 'Pushing...' : 'Push & Create PR'}
+                            </button>
+                            <p className="text-[10px] text-slate-500 text-center">Requires Personal Access Token (Configure in Settings)</p>
+                        </div>
+                    )}
                 </div>
             </div>
         )}

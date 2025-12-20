@@ -1,17 +1,23 @@
 
-# 📋 Immediate Next Steps: Epic 1 Execution
+# 📋 Immediate Next Steps: Epic 2 Execution
 
-The focus is now on **Phase 11.1: The Council (Multi-Agent Chat)**.
+## ✅ Completed
+- **Phase 11.1: The Council**: Multi-agent debate system.
+- **Phase 11.2: Tool Use**: RAG and File I/O tools.
+- **Phase 11.3: Git-Native Integration**: GitHub Push/Pull & Reverse Architect.
+- **Phase 12.1: Membership Model**: Tiered feature gating (Free/Pro), Quota logic, Upgrade UI.
 
-## 1. Agent Orchestration Layer
-- [ ] Create `utils/AgentOrchestrator.ts`.
-- [ ] Define the specific system prompts for the "Council" members (Architect, Security, DevOps) in `utils/agentPersonas.ts`.
-- [ ] Implement a function `orchestrateDebate(query: string)` that chains calls between these personas.
+## 🚧 In Progress: Epic 2 (Commercialization & Teams)
+Transition 0relai from single-player utility to SaaS platform.
 
-## 2. UI Updates
-- [ ] Update `ArchitectChat.tsx` to support a "Threaded" view (nested messages).
-- [ ] Design avatars/headers for the different agents to distinguish who is speaking.
+### Phase 12.2: Team Dynamics (Current)
+- [ ] **Organization Data Structure:** Support multiple users per project.
+- [ ] **RBAC Enforcement:** Middleware to check `owner` vs `viewer` permissions.
+- [ ] **Invite Flow:** UI to generate invite links (simulated).
 
-## 3. Integration
-- [ ] Wire the `AgentOrchestrator` into the main Chat interface.
-- [ ] Allow the user to "Accept" the final synthesis, which should update the `ProjectData`.
+### Phase 12.3: Security Hardening (Next)
+- [ ] **API Key Proxy:** Move Gemini calls to Edge Functions.
+- [ ] **Rate Limiting:** Protect backend resources.
+
+## 🔮 Future: Edge Hardening
+- [ ] **WebContainer v2:** In-browser Node.js execution.

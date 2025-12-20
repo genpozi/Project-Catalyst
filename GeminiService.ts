@@ -1,9 +1,10 @@
 
-import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Type, Chat, GenerateContentResponse, FunctionCall, FunctionResponse } from "@google/genai";
 import { LocalIntelligence } from "./LocalIntelligence";
 import { cleanAndParseJson } from "./utils/safeJson";
 import { validateArchitecture, validateSchema, validateFileStructure, validateDesignSystem } from "./utils/validators";
 import { AGENT_PERSONAS, AgentRoleId } from "./utils/agentPersonas";
+import { TOOL_REGISTRY, AgentTool } from "./utils/tools";
 import { 
   ProjectData, 
   BrainstormingData, 
@@ -81,6 +82,80 @@ export class GeminiService {
           model: this.modelFlash,
           contents: prompt
       }));
+      return response.text || "";
+  }
+
+  // Raw generation for simple prompts
+  async generateRaw(systemPrompt: string, userPrompt: string, model: string = this.modelPro): Promise<string> {
+      const response = await this.retryWithBackoff<GenerateContentResponse>(() => this.ai.models.generateContent({
+          model: model,
+          contents: userPrompt,
+          config: {
+              systemInstruction: systemPrompt,
+              thinkingConfig: model === this.modelPro ? { thinkingBudget: 4000 } : undefined 
+          }
+      }));
+      return response.text || "";
+  }
+
+  /**
+   * Advanced Agent Loop with Function Calling Support.
+   * Allows the model to call tools, receive results, and continue thinking.
+   */
+  async generateAgentTurn(
+      systemPrompt: string, 
+      userPrompt: string, 
+      tools: AgentTool[], 
+      project: ProjectData,
+      model: string = this.modelPro
+  ): Promise<string> {
+      // 1. Initial Request
+      const toolDecls = tools.map(t => t.declaration);
+      
+      // Start a chat session to maintain context of tool calls
+      const chat = this.ai.chats.create({
+          model: model,
+          config: {
+              systemInstruction: systemPrompt,
+              tools: toolDecls.length > 0 ? [{ functionDeclarations: toolDecls }] : undefined,
+              thinkingConfig: model === this.modelPro ? { thinkingBudget: 4000 } : undefined 
+          }
+      });
+
+      let response: GenerateContentResponse = await this.retryWithBackoff<GenerateContentResponse>(() => chat.sendMessage({ message: userPrompt }));
+      
+      // 2. Loop for Tool Calls
+      let maxTurns = 5; // Prevent infinite loops
+      
+      while (response.functionCalls && response.functionCalls.length > 0 && maxTurns > 0) {
+          maxTurns--;
+          
+          const functionResponses: FunctionResponse[] = [];
+          
+          for (const call of response.functionCalls) {
+              const tool = tools.find(t => t.declaration.name === call.name);
+              let result: any = "Error: Tool not found";
+              
+              if (tool) {
+                  try {
+                      console.log(`[Agent] Calling tool: ${call.name}`, call.args);
+                      result = await tool.execute(call.args, project);
+                  } catch (e: any) {
+                      result = `Error executing tool: ${e.message}`;
+                  }
+              }
+              
+              functionResponses.push({
+                  id: call.id,
+                  name: call.name,
+                  response: { result }
+              });
+          }
+
+          // Send results back to model
+          response = await this.retryWithBackoff<GenerateContentResponse>(() => chat.sendMessage(functionResponses));
+      }
+
       return response.text || "";
   }
 
@@ -840,12 +915,106 @@ export class GeminiService {
     return response.text || "";
   }
 
-  // UPDATED METHOD: Enhanced Context-Aware Session Creation
+  // REVERSE ENGINEERING (Enhanced)
+  async reverseEngineerProject(fileStructure: FileNode[], readmeContent?: string, packageJsonContent?: string): Promise<Partial<ProjectData>> {
+      // 1. Convert complex tree to simple list for prompt
+      const flatten = (nodes: FileNode[], path = ''): string[] => {
+          let res: string[] = [];
+          nodes.forEach(n => {
+              const fullPath = path ? `${path}/${n.name}` : n.name;
+              res.push(fullPath);
+              if (n.children) res = res.concat(flatten(n.children, fullPath));
+          });
+          return res;
+      };
+      
+      const fileList = flatten(fileStructure).slice(0, 500); 
+
+      // 2. Pre-extract dependencies if package.json exists to save context window and improve accuracy
+      let dependencyList: { name: string, description: string }[] = [];
+      if (packageJsonContent) {
+          try {
+              const pkg = JSON.parse(packageJsonContent);
+              const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+              // Take top 20 deps for context
+              dependencyList = Object.keys(allDeps).slice(0, 20).map(d => ({ name: d, description: 'Detected in package.json' }));
+          } catch (e) {}
+      }
+
+      const response = await this.retryWithBackoff<GenerateContentResponse>(() => this.ai.models.generateContent({
+          model: this.modelPro,
+          contents: `
+          Reverse Engineer this project based on its file structure and key files.
+          
+          Files:
+          ${fileList.join('\n')}
+          
+          README:
+          ${readmeContent || 'N/A'}
+          
+          package.json:
+          ${packageJsonContent || 'N/A'}
+          
+          Task:
+          1. Infer the "initialIdea" (Project Description).
+          2. Deduce the Tech Stack.
+          3. Infer project type.
+          4. List key dependencies (if not already extracted).
+          `,
+          config: {
+              thinkingConfig: { thinkingBudget: 8000 },
+              responseMimeType: "application/json",
+              responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                      initialIdea: { type: Type.STRING },
+                      projectType: { type: Type.STRING },
+                      architecture: {
+                          type: Type.OBJECT,
+                          properties: {
+                              stack: {
+                                  type: Type.OBJECT,
+                                  properties: {
+                                      frontend: { type: Type.STRING },
+                                      backend: { type: Type.STRING },
+                                      database: { type: Type.STRING },
+                                      styling: { type: Type.STRING },
+                                      deployment: { type: Type.STRING },
+                                      rationale: { type: Type.STRING }
+                                  }
+                              },
+                              dependencies: { 
+                                  type: Type.ARRAY, 
+                                  items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, description: { type: Type.STRING } } } 
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }));
+
+      const parsed = cleanAndParseJson<any>(response.text || "{}");
+      
+      // Merge manually extracted deps if AI missed them or to bolster list
+      if (parsed.architecture && dependencyList.length > 0) {
+          parsed.architecture.dependencies = [...(parsed.architecture.dependencies || []), ...dependencyList];
+          // Dedupe
+          const seen = new Set();
+          parsed.architecture.dependencies = parsed.architecture.dependencies.filter((d: any) => {
+              if (seen.has(d.name)) return false;
+              seen.add(d.name);
+              return true;
+          });
+      }
+
+      return parsed;
+  }
+
   async createChatSession(project: ProjectData, roleId: AgentRoleId = 'ARCHITECT') {
     const persona = AGENT_PERSONAS[roleId] || AGENT_PERSONAS['ARCHITECT'];
     const knowledgeBase = this.getKnowledgeContext(project.knowledgeBase);
     
-    // Construct sophisticated system prompt
     const systemInstruction = `
 ${persona.systemPrompt(project)}
 

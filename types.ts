@@ -24,9 +24,22 @@ export enum TaskStatus {
   DONE = 'Done'
 }
 
+export type SubscriptionTier = 'Free' | 'Pro' | 'Enterprise';
+
+export interface UserProfile {
+    id: string;
+    email: string;
+    avatar?: string;
+    tier: SubscriptionTier;
+    projectsUsed: number;
+    projectsLimit: number;
+    aiTokensUsed: number;
+    aiTokensLimit: number; // -1 for unlimited
+}
+
 export interface ActivityItem {
   id: string;
-  type: 'create' | 'update' | 'snapshot' | 'publish' | 'system';
+  type: 'create' | 'update' | 'snapshot' | 'publish' | 'system' | 'billing';
   message: string;
   timestamp: number;
   projectId?: string;
@@ -271,6 +284,9 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+  agentId?: string; // e.g. 'ARCHITECT', 'SECURITY', 'CHAIRPERSON'
+  proposal?: Partial<ProjectData>; // Actionable state changes
+  proposalSummary?: string; // Explanation of the proposal
 }
 
 export interface Comment {
@@ -337,6 +353,12 @@ export interface ProjectTemplate {
     createdAt: number;
 }
 
+export interface GitHubConfig {
+    repoOwner: string;
+    repoName: string;
+    branch: string;
+}
+
 export interface ProjectData {
   id: string;
   name: string;
@@ -368,7 +390,8 @@ export interface ProjectData {
   author?: string;
   tags?: string[];
   likes?: number;
-  activePlugins?: string[]; 
+  activePlugins?: string[];
+  githubConfig?: GitHubConfig;
 }
 
 export interface LocalEngineState {

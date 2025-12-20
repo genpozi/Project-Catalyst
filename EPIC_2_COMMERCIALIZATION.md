@@ -6,21 +6,21 @@ Transition 0relai from a single-player utility to a viable SaaS business with te
 
 ## 1. Membership & Pricing Models
 
+### Status: ✅ Implemented (Phase 12.1)
+
 ### Requirements
-*   **Minimal Free Tier:** Local Intelligence (WebLLM) is free. Cloud Intelligence (Gemini Pro) is severely rate-limited or disabled.
+*   **Minimal Free Tier:** Local Intelligence (WebLLM) is free. Cloud Intelligence (Gemini Pro) is limited. 1 Active Project.
 *   **Pro Tier:** Unlimited Cloud Intelligence, Cloud Sync, Private Projects.
 *   **Team Tier:** Shared Workspaces, Role-Based Access Control (RBAC).
-*   **Top-Ups:** Since high-reasoning models (Gemini 1.5/2.0 Pro) are expensive, heavy users may need token top-ups.
 
-### Research Topics
-*   **Stripe Integration:**
-    *   *Checkout Sessions:* For handling initial subscription.
-    *   *Customer Portal:* Allow users to cancel/upgrade self-serve.
-    *   *Webhooks:* Need a Supabase Edge Function to listen for `invoice.payment_succeeded` to update the `projects` table quotas.
-*   **Usage Metering:** How do we count tokens per user? 
-    *   *Idea:* Intermediate proxy (Edge Function) between Client and Gemini API to log token usage to Supabase.
+### Implementation Details
+*   **State:** `UserProfile` in `types.ts` tracks `projectsUsed` and `tier`.
+*   **Gating:** `ProjectContext` enforces `canCreateProject` check before `RESET_PROJECT` or `IMPORT` actions.
+*   **UI:** `UpgradeModal` handles the upsell flow. `SettingsModal` displays usage metrics.
 
 ## 2. Team Workflows & Data Architecture
+
+### Status: 🚧 In Progress (Phase 12.2)
 
 ### Requirements
 *   A user can belong to multiple **Organizations**.

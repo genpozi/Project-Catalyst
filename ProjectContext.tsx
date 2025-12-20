@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo } from 'react';
-import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus, ActivityItem, ProjectTemplate, PresenceUser } from './types';
+import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus, ActivityItem, ProjectTemplate, PresenceUser, UserProfile, SubscriptionTier } from './types';
 import { db } from './utils/db';
 import { cliSync } from './utils/CLISyncService';
 import { cloudStorage } from './utils/cloudStorage';
@@ -10,6 +10,7 @@ interface UIState {
     selectedFilePath?: string;
     selectedDocId?: string;
     selectedNodeId?: string;
+    showUpgradeModal?: boolean; // New UI state for modal triggering
 }
 
 interface ProjectState {
@@ -26,6 +27,7 @@ interface ProjectState {
   recentActivities: ActivityItem[];
   ui: UIState;
   user: any | null; // Supabase user
+  userProfile: UserProfile | null; // Extended user profile with billing info
   collaborators: Collaborator[]; // Global list of known users
   onlineUsers: PresenceUser[]; // Real-time users
 }
@@ -59,14 +61,18 @@ type ProjectAction =
   | { type: 'SET_SELECTED_FILE'; payload: string | undefined }
   | { type: 'SET_SELECTED_DOC'; payload: string | undefined }
   | { type: 'SET_SELECTED_NODE'; payload: string | undefined }
+  | { type: 'TRIGGER_UPGRADE_MODAL'; payload: boolean }
   | { type: 'ADD_ACTIVITY'; payload: ActivityItem }
   | { type: 'SET_USER'; payload: any | null }
+  | { type: 'SET_USER_PROFILE'; payload: UserProfile }
+  | { type: 'UPGRADE_TIER'; payload: SubscriptionTier }
   | { type: 'SET_ONLINE_USERS'; payload: PresenceUser[] };
 
 const SAVED_STATE_KEY = '0relai-project-state-v2';
 const MARKETPLACE_KEY = '0relai-marketplace';
 const TEMPLATES_KEY = '0relai-templates';
 const ACTIVITY_KEY = '0relai-activities';
+const USER_PROFILE_KEY = '0relai-user-profile'; // Local storage simulation key
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -110,8 +116,16 @@ const initialState: ProjectState = {
   recentActivities: [],
   ui: {},
   user: null,
+  userProfile: null,
   collaborators: [],
   onlineUsers: []
+};
+
+// Check if user can create a project based on their tier
+const canCreateProject = (profile: UserProfile | null, currentProjects: number) => {
+    if (!profile) return true; // Assume free if not loaded, but limit enforced later
+    if (profile.tier === 'Free' && currentProjects >= profile.projectsLimit) return false;
+    return true;
 };
 
 const projectReducer = (state: ProjectState, action: ProjectAction): ProjectState => {
@@ -158,12 +172,23 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
       newState.error = action.payload;
       break;
     case 'RESET_PROJECT':
-      const newProj = createNewProject();
-      newState.projectData = newProj;
-      newState.currentPhase = AppPhase.IDEA;
-      newState.unlockedPhases = [AppPhase.IDEA];
-      newState.ui = {};
-      newActivity = { id: generateId(), type: 'create', message: `Started new project`, timestamp: Date.now(), projectId: newProj.id, projectName: newProj.name };
+      if (state.userProfile && !canCreateProject(state.userProfile, state.projectsList.length)) {
+          // Trigger Upgrade Modal
+          newState.ui.showUpgradeModal = true;
+      } else {
+          const newProj = createNewProject();
+          newState.projectData = newProj;
+          newState.currentPhase = AppPhase.IDEA;
+          newState.unlockedPhases = [AppPhase.IDEA];
+          newState.ui = {};
+          newActivity = { id: generateId(), type: 'create', message: `Started new project`, timestamp: Date.now(), projectId: newProj.id, projectName: newProj.name };
+          
+          // Increment usage simulation
+          if (newState.userProfile) {
+              newState.userProfile = { ...newState.userProfile, projectsUsed: newState.userProfile.projectsUsed + 1 };
+              localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+          }
+      }
       break;
     case 'LOAD_PROJECT':
       newState.projectData = action.payload;
@@ -174,6 +199,10 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
       break;
     case 'DELETE_PROJECT':
       newState.projectsList = state.projectsList.filter(p => p.id !== action.payload);
+      if (newState.userProfile) {
+          newState.userProfile = { ...newState.userProfile, projectsUsed: Math.max(0, newState.userProfile.projectsUsed - 1) };
+          localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+      }
       newActivity = { id: generateId(), type: 'system', message: `Deleted project`, timestamp: Date.now() };
       break;
     case 'UNLOCK_PHASE':
@@ -268,6 +297,11 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
         break;
     }
     case 'IMPORT_FROM_MARKETPLACE': {
+        if (state.userProfile && !canCreateProject(state.userProfile, state.projectsList.length)) {
+            newState.ui.showUpgradeModal = true;
+            return newState;
+        }
+
         const newProject: ProjectData = {
             ...action.payload,
             id: generateId(),
@@ -284,6 +318,11 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
         newState.currentPhase = AppPhase.IDEA;
         newState.unlockedPhases = [AppPhase.IDEA];
         newActivity = { id: generateId(), type: 'create', message: `Forked "${action.payload.name}"`, timestamp: Date.now(), projectId: newProject.id, projectName: newProject.name };
+        
+        if (newState.userProfile) {
+            newState.userProfile = { ...newState.userProfile, projectsUsed: newState.userProfile.projectsUsed + 1 };
+            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+        }
         break;
     }
     case 'SAVE_TEMPLATE': {
@@ -358,11 +397,29 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
     case 'SET_SELECTED_NODE':
         newState.ui = { ...state.ui, selectedNodeId: action.payload, selectedFilePath: undefined, selectedDocId: undefined };
         break;
+    case 'TRIGGER_UPGRADE_MODAL':
+        newState.ui = { ...state.ui, showUpgradeModal: action.payload };
+        break;
     case 'ADD_ACTIVITY':
         newActivity = action.payload;
         break;
     case 'SET_USER':
         newState.user = action.payload;
+        break;
+    case 'SET_USER_PROFILE':
+        newState.userProfile = action.payload;
+        break;
+    case 'UPGRADE_TIER':
+        if (newState.userProfile) {
+            newState.userProfile = { 
+                ...newState.userProfile, 
+                tier: action.payload,
+                projectsLimit: action.payload === 'Free' ? 1 : -1, // Unlimited for paid
+                aiTokensLimit: action.payload === 'Free' ? 1000 : -1
+            };
+            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+            newActivity = { id: generateId(), type: 'billing', message: `Upgraded to ${action.payload} Plan`, timestamp: Date.now() };
+        }
         break;
     case 'SET_ONLINE_USERS':
         newState.onlineUsers = action.payload;
@@ -404,6 +461,25 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
             const user = await getCurrentUser();
             dispatch({ type: 'SET_USER', payload: user });
 
+            // Restore User Profile (Simulated DB)
+            const savedProfile = localStorage.getItem(USER_PROFILE_KEY);
+            if (savedProfile) {
+                dispatch({ type: 'SET_USER_PROFILE', payload: JSON.parse(savedProfile) });
+            } else {
+                // Initialize default profile
+                const defaultProfile: UserProfile = {
+                    id: user?.id || 'anon',
+                    email: user?.email || 'anon@user.com',
+                    tier: 'Free',
+                    projectsUsed: 0,
+                    projectsLimit: 1, // Strict limit for demo
+                    aiTokensUsed: 0,
+                    aiTokensLimit: 1000
+                };
+                dispatch({ type: 'SET_USER_PROFILE', payload: defaultProfile });
+                localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(defaultProfile));
+            }
+
             // Listen for auth state changes
             supabase.auth.onAuthStateChange(async (event, session) => {
                 dispatch({ type: 'SET_USER', payload: session?.user || null });
@@ -427,6 +503,17 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
             // Load Projects from Cloud/Local via Storage Service
             const projectsList = await cloudStorage.listProjects();
             dispatch({ type: 'SYNC_PROJECTS_LIST', payload: projectsList });
+
+            // Sync project count to profile
+            if (state.userProfile) {
+                const count = projectsList.length;
+                if (count !== state.userProfile.projectsUsed) {
+                    dispatch({ 
+                        type: 'SET_USER_PROFILE', 
+                        payload: { ...state.userProfile, projectsUsed: count } 
+                    });
+                }
+            }
 
             const savedStateStr = localStorage.getItem(SAVED_STATE_KEY);
             if (savedStateStr) {

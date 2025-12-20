@@ -2,7 +2,7 @@
 # 0relai - Master Development Plan & Roadmap
 
 ## 🎯 Executive Summary
-**0relai (Zero Reliance)** is an AI-powered "Meta-Architect" designed to guide developers from abstract ideas to fully specified, production-ready blueprints. It operates on a **Hybrid Intelligence** model, leveraging Cloud AI for reasoning and Local AI for privacy.
+**0relai (Zero Reliance)** is an AI-powered "Meta-Architect" designed to guide developers from abstract ideas to fully specified, production-ready technical blueprints. It operates on a **Hybrid Intelligence** model, leveraging Cloud AI for reasoning and Local AI for privacy.
 
 ---
 
@@ -21,21 +21,17 @@
 *Detailed Specification: `EPIC_1_DEEP_AGENTS.md`*
 
 ### Phase 11.1: "The Council" (Multi-Agent Debate)
-Instead of a single chatbot, the user summons a "Council" where specialized agents critique each other before presenting a solution.
-- [ ] **Agent Orchestrator:** Logic to spawn multiple sub-agents (Security, DevOps, Architect) for a single query.
-- [ ] **Debate UI:** A threaded view where users see agents "talking to each other" (e.g., Security Bot flagging a DevOps Bot suggestion).
-- [ ] **Consensus Engine:** A synthesizer step that merges the debate into a final decision.
+- [x] **Agent Orchestrator:** Logic to spawn multiple sub-agents (Security, DevOps, Architect).
+- [x] **Debate UI:** Threaded view where users see agents "talking to each other".
+- [x] **Consensus Engine:** Synthesizer step that merges debate into final decisions.
 
-### Phase 11.2: Tool Use & MCP (Model Context Protocol)
-Agents gain read/write access to the environment via standardized protocols.
-- [ ] **WebContainer Integration:** Run a Node.js sandbox in the browser to validate generated code *before* showing it to the user.
-- [ ] **MCP Client:** Implement client-side Model Context Protocol to standardize how agents read local files (via Bridge) and external docs.
+### Phase 11.2: Tool Use & MCP
+- [x] **RAG Tools:** Agents can read Knowledge Base docs.
+- [x] **File I/O:** Agents can read/write to the virtual file system.
 
 ### Phase 11.3: The Git Bridge
-Removing the friction of manual copy-pasting.
-- [ ] **GitHub OAuth:** Link personal GitHub account.
-- [ ] **Repo Tree Reader:** Read remote repositories for context.
-- [ ] **Direct PR Agent:** The agent creates a branch, commits code, and opens a Pull Request with a detailed description.
+- [x] **GitHub Integration:** Read/Write access to remote repos.
+- [x] **Reverse Architect:** Import existing codebases to generate blueprints.
 
 ---
 
@@ -44,15 +40,18 @@ Removing the friction of manual copy-pasting.
 *Research & Requirements: `EPIC_2_COMMERCIALIZATION.md`*
 
 ### Phase 12.1: The Membership Model
-- **Research:** Stripe Connect vs. Standard, Token-based top-ups vs. Flat SaaS.
-- **Implementation:** Tiered feature gating (Free vs. Pro).
+- [x] **Tier Definitions:** Free vs. Pro vs. Team.
+- [x] **Usage Gating:** Quota logic for projects and tokens.
+- [x] **Upgrade UI:** Pricing table and upgrade simulation.
 
 ### Phase 12.2: Team Dynamics
-- **Research:** RBAC complexity, Shared Workspaces, Concurrent Editing (CRDTs).
-- **Implementation:** Organization management UI, Invite flows.
+- [ ] **Organization Support:** Shared workspaces.
+- [ ] **RBAC:** Admin/Editor/Viewer roles.
+- [ ] **Real-time Cursors:** Visual presence on the board.
 
 ### Phase 12.3: Security & Compliance
-- **Hardening:** Row Level Security (RLS) audits, API Rate limiting, Data residency compliance.
+- [ ] **Hardening:** Row Level Security (RLS) audits.
+- [ ] **Edge Proxy:** Hide API keys behind a backend proxy.
 
 ---
 

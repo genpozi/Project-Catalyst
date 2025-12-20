@@ -5,6 +5,7 @@ import { useProject } from '../ProjectContext';
 import ModelManager from './ModelManager';
 import { exportWorkspaceBackup, importWorkspaceBackup } from '../utils/exportService';
 import { cloudStorage } from '../utils/cloudStorage';
+import { ghSync } from '../utils/githubSync';
 import { useToast } from './Toast';
 
 interface SettingsModalProps {
@@ -16,7 +17,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { addToast } = useToast();
   
   // Tabs
-  const [activeTab, setActiveTab] = useState<'general' | 'intelligence' | 'cloud'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'intelligence' | 'cloud' | 'github' | 'billing'>('general');
 
   const [dataUsage, setDataUsage] = useState<string>('Calculating...');
   const [fineTuningOptIn, setFineTuningOptIn] = useState(localStorage.getItem('0relai-opt-in') === 'true');
@@ -28,6 +29,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [sbKey, setSbKey] = useState('');
   const [cloudEnabled, setCloudEnabled] = useState(false);
   const [isTestingCloud, setIsTestingCloud] = useState(false);
+
+  // GitHub Settings
+  const [ghToken, setGhToken] = useState('');
+  const [ghUser, setGhUser] = useState<any>(null);
   
   const engine = LocalIntelligence.getInstance();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +41,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     estimateStorage();
     checkGpu();
     loadCloudConfig();
+    loadGhConfig();
   }, []);
 
   const loadCloudConfig = () => {
@@ -44,6 +50,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           setCloudEnabled(true);
           setSbUrl(config.supabaseUrl || '');
           setSbKey(config.supabaseKey || '');
+      }
+  };
+
+  const loadGhConfig = async () => {
+      const token = ghSync.getToken();
+      if (token) {
+          setGhToken(token);
+          try {
+              const user = await ghSync.getUser();
+              setGhUser(user);
+          } catch (e) {
+              console.warn("Invalid GH token");
+          }
+      }
+  };
+
+  const handleSaveGh = async () => {
+      if (!ghToken) return;
+      ghSync.setToken(ghToken);
+      try {
+          const user = await ghSync.getUser();
+          setGhUser(user);
+          addToast(`Connected to GitHub as ${user.login}`, "success");
+      } catch (e) {
+          addToast("Invalid Personal Access Token", "error");
+          setGhUser(null);
       }
   };
 
@@ -146,7 +178,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       setIsTestingCloud(false);
   };
 
+  const handleUpgradeClick = () => {
+      dispatch({ type: 'TRIGGER_UPGRADE_MODAL', payload: true });
+      onClose();
+  };
+
   const isPlatformAuth = !!state.user;
+  const currentTier = state.userProfile?.tier || 'Free';
+  const projectsUsed = state.userProfile?.projectsUsed || state.projectsList.length;
+  const projectsLimit = state.userProfile?.projectsLimit || 1;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-fade-in">
@@ -158,25 +198,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 <button onClick={onClose} className="text-glass-text-secondary hover:text-white">✕</button>
             </div>
 
-            <div className="flex border-b border-glass-border bg-slate-900/30">
-                <button 
-                    onClick={() => setActiveTab('general')}
-                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'general' ? 'text-white border-b-2 border-brand-primary' : 'text-slate-500 hover:text-white'}`}
-                >
-                    General
-                </button>
-                <button 
-                    onClick={() => setActiveTab('intelligence')}
-                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'intelligence' ? 'text-white border-b-2 border-brand-primary' : 'text-slate-500 hover:text-white'}`}
-                >
-                    Intelligence
-                </button>
-                <button 
-                    onClick={() => setActiveTab('cloud')}
-                    className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === 'cloud' ? 'text-white border-b-2 border-brand-primary' : 'text-slate-500 hover:text-white'}`}
-                >
-                    Cloud Sync
-                </button>
+            <div className="flex border-b border-glass-border bg-slate-900/30 overflow-x-auto">
+                {['general', 'intelligence', 'cloud', 'github', 'billing'].map(tab => (
+                    <button 
+                        key={tab}
+                        onClick={() => setActiveTab(tab as any)}
+                        className={`flex-1 min-w-[80px] py-3 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === tab ? 'text-white border-b-2 border-brand-primary' : 'text-slate-500 hover:text-white'}`}
+                    >
+                        {tab}
+                    </button>
+                ))}
             </div>
 
             <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar flex-grow">
@@ -339,6 +370,101 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                                 {isTestingCloud ? 'Verifying...' : 'Save & Connect'}
                             </button>
                         )}
+                    </section>
+                )}
+
+                {activeTab === 'github' && (
+                    <section className="space-y-6">
+                        <div className="bg-[#161b22] border border-white/10 p-5 rounded-xl">
+                            <div className="flex items-center gap-3 mb-4">
+                                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                <div>
+                                    <h5 className="font-bold text-white">GitHub Integration</h5>
+                                    <p className="text-xs text-glass-text-secondary">Enable direct push and Pull Requests.</p>
+                                </div>
+                            </div>
+
+                            {ghUser ? (
+                                <div className="flex items-center justify-between bg-black/20 p-3 rounded-lg mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <img src={ghUser.avatar_url} className="w-6 h-6 rounded-full" />
+                                        <span className="text-sm text-white font-bold">{ghUser.login}</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => { setGhToken(''); setGhUser(null); ghSync.setToken(''); }}
+                                        className="text-xs text-red-400 hover:text-white"
+                                    >
+                                        Disconnect
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-glass-text-secondary uppercase block mb-1">Personal Access Token (Classic)</label>
+                                        <input 
+                                            value={ghToken}
+                                            onChange={(e) => setGhToken(e.target.value)}
+                                            type="password"
+                                            className="w-full glass-input rounded-lg px-3 py-2 text-xs font-mono"
+                                            placeholder="ghp_xxxxxxxxxxxx"
+                                        />
+                                        <p className="text-[10px] text-slate-500 mt-1">
+                                            Required scopes: <code>repo</code>
+                                        </p>
+                                    </div>
+                                    <button 
+                                        onClick={handleSaveGh}
+                                        className="w-full py-2 bg-slate-700 hover:bg-white hover:text-black text-white font-bold rounded-lg transition-all text-xs"
+                                    >
+                                        Connect
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {activeTab === 'billing' && (
+                    <section className="space-y-6">
+                        <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 p-5 rounded-xl border border-white/10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h5 className="font-bold text-white text-lg">Current Plan</h5>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase ${currentTier === 'Free' ? 'bg-slate-700 text-slate-300' : 'bg-brand-primary text-white'}`}>
+                                        {currentTier}
+                                    </span>
+                                </div>
+                                {currentTier === 'Free' && (
+                                    <button 
+                                        onClick={handleUpgradeClick}
+                                        className="bg-brand-primary hover:bg-brand-secondary text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all"
+                                    >
+                                        Upgrade to Pro
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-xs text-glass-text-secondary mb-1">
+                                        <span>Active Projects</span>
+                                        <span>{projectsUsed} / {projectsLimit === -1 ? '∞' : projectsLimit}</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-blue-500" 
+                                            style={{ width: `${Math.min(100, (projectsUsed / (projectsLimit === -1 ? 100 : projectsLimit)) * 100)}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                
+                                {currentTier === 'Free' && (
+                                    <div className="bg-yellow-900/20 border border-yellow-500/30 p-3 rounded-lg text-xs text-yellow-200">
+                                        Upgrade to create unlimited projects and use Cloud AI features.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </section>
                 )}
 

@@ -32,6 +32,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ShortcutsModal from './components/ShortcutsModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import OnboardingTour from './components/OnboardingTour';
+import UpgradeModal from './components/UpgradeModal';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useProject();
@@ -301,6 +302,10 @@ const AppContent: React.FC = () => {
 
         {isShortcutsOpen && (
             <ShortcutsModal onClose={() => setIsShortcutsOpen(false)} />
+        )}
+
+        {state.ui.showUpgradeModal && (
+            <UpgradeModal onClose={() => dispatch({ type: 'TRIGGER_UPGRADE_MODAL', payload: false })} />
         )}
         
         <Header 
