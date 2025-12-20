@@ -2,17 +2,19 @@
 import React, { useEffect, useState } from 'react';
 import { SchemaData } from '../types';
 import RefineBar from './RefineBar';
+import VisualERD from './VisualERD';
 
 interface DataModelViewProps {
   data?: SchemaData;
+  onUpdate?: (data: SchemaData) => void;
   onContinue: () => void;
   hideActions?: boolean;
   onRefine?: (prompt: string) => Promise<void>;
   isRefining?: boolean;
 }
 
-const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideActions, onRefine, isRefining = false }) => {
-  const [activeTab, setActiveTab] = useState<'diagram' | 'tables' | 'prisma' | 'sql'>('diagram');
+const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinue, hideActions, onRefine, isRefining = false }) => {
+  const [activeTab, setActiveTab] = useState<'visual' | 'diagram' | 'tables' | 'prisma' | 'sql'>('visual');
 
   useEffect(() => {
     if (activeTab === 'diagram' && data?.mermaidChart) {
@@ -38,8 +40,12 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
       window.open(`https://mermaid.live/edit#base64:${encoded}`, '_blank');
   };
 
+  const handleUpdate = (newData: SchemaData) => {
+      if (onUpdate) onUpdate(newData);
+  };
+
   return (
-    <div className="animate-slide-in-up">
+    <div className="animate-slide-in-up flex flex-col h-full">
       {!hideActions && (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold text-brand-text mb-2 text-center">Data Model & Schema</h2>
@@ -50,7 +56,7 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
       )}
 
       {onRefine && !hideActions && (
-        <div className="max-w-3xl mx-auto mb-8">
+        <div className="max-w-3xl mx-auto mb-8 w-full">
             <RefineBar 
                 onRefine={onRefine} 
                 isRefining={isRefining} 
@@ -61,27 +67,39 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
 
       {/* Tabs */}
       <div className="flex justify-center mb-6">
-        <div className="bg-slate-800 p-1 rounded-lg inline-flex">
-          {['diagram', 'tables', 'prisma', 'sql'].map((tab) => (
+        <div className="bg-slate-800 p-1 rounded-lg inline-flex overflow-x-auto max-w-full">
+          {[
+              { id: 'visual', label: '✨ Builder' },
+              { id: 'diagram', label: 'Diagram' },
+              { id: 'tables', label: 'Tables' },
+              { id: 'prisma', label: 'Prisma' },
+              { id: 'sql', label: 'SQL' }
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`px-4 py-2 rounded-md text-sm font-semibold capitalize transition-all ${
-                activeTab === tab
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2 rounded-md text-sm font-semibold whitespace-nowrap transition-all ${
+                activeTab === tab.id
                   ? 'bg-brand-secondary text-white shadow-lg'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {tab === 'sql' ? 'SQL' : tab}
+              {tab.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="bg-slate-800/50 rounded-lg ring-1 ring-slate-700 min-h-[400px] p-6 overflow-hidden relative">
+      <div className="bg-slate-800/50 rounded-lg ring-1 ring-slate-700 flex-grow min-h-[500px] p-6 overflow-hidden relative flex flex-col">
+        
+        {/* Visual Builder */}
+        {activeTab === 'visual' && (
+            <VisualERD schema={data} onUpdate={handleUpdate} />
+        )}
+
         {/* Mermaid Diagram */}
         {activeTab === 'diagram' && (
-            <div className="flex justify-center overflow-x-auto relative">
+            <div className="flex justify-center overflow-x-auto relative h-full">
                <div className="mermaid">
                  {data.mermaidChart}
                </div>
@@ -97,9 +115,9 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
 
         {/* Table View */}
         {activeTab === 'tables' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto custom-scrollbar h-full">
             {data.tables.map((table, idx) => (
-              <div key={idx} className="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden">
+              <div key={idx} className="bg-slate-900/50 rounded-lg border border-slate-700 overflow-hidden h-fit">
                 <div className="bg-slate-800/80 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
                   <h3 className="font-bold text-brand-accent">{table.name}</h3>
                   <span className="text-xs text-slate-400">{table.description}</span>
@@ -131,14 +149,14 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onContinue, hideAct
 
         {/* Code Views */}
         {(activeTab === 'prisma' || activeTab === 'sql') && (
-          <div className="relative group">
+          <div className="relative group h-full flex flex-col">
              <button 
                 onClick={() => navigator.clipboard.writeText(activeTab === 'prisma' ? data.prismaSchema : data.sqlSchema)}
-                className="absolute top-2 right-2 px-3 py-1 text-xs bg-slate-700 hover:bg-brand-secondary text-white rounded transition-colors opacity-0 group-hover:opacity-100"
+                className="absolute top-2 right-2 px-3 py-1 text-xs bg-slate-700 hover:bg-brand-secondary text-white rounded transition-colors opacity-0 group-hover:opacity-100 z-10"
              >
                 Copy
              </button>
-             <pre className="bg-slate-950 p-4 rounded-lg overflow-x-auto text-sm font-mono text-blue-100 border border-slate-800">
+             <pre className="bg-slate-950 p-4 rounded-lg overflow-y-auto text-sm font-mono text-blue-100 border border-slate-800 flex-grow custom-scrollbar">
                 {activeTab === 'prisma' ? data.prismaSchema : data.sqlSchema}
              </pre>
           </div>

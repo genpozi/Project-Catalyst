@@ -4,6 +4,7 @@ import { DesignSystem } from '../types';
 import RefineBar from './RefineBar';
 import { useProject } from '../ProjectContext';
 import { GeminiService } from '../GeminiService';
+import VisualDesignEditor from './VisualDesignEditor';
 
 interface DesignSystemViewProps {
   designSystem?: DesignSystem;
@@ -14,12 +15,16 @@ interface DesignSystemViewProps {
 }
 
 const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onContinue, hideActions, onRefine, isRefining = false }) => {
-  const [activeTab, setActiveTab] = useState<'tokens' | 'preview'>('tokens');
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isGeneratingWireframe, setIsGeneratingWireframe] = useState(false);
-  const { state, dispatch } = useProject();
+  const { dispatch, state } = useProject();
   const gemini = React.useMemo(() => new GeminiService(), []);
 
   if (!designSystem) return null;
+
+  const handleUpdate = (updatedSystem: DesignSystem) => {
+      dispatch({ type: 'UPDATE_PROJECT_DATA', payload: { designSystem: updatedSystem } });
+  };
 
   const handleGenerateWireframe = async () => {
     setIsGeneratingWireframe(true);
@@ -45,16 +50,16 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
             </div>
             <div className="bg-white/5 p-1 rounded-xl flex">
                 <button 
-                  onClick={() => setActiveTab('tokens')}
-                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'tokens' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                  onClick={() => setActiveTab('editor')}
+                  className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'editor' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
                 >
-                  Tokens
+                  ✨ Editor
                 </button>
                 <button 
                   onClick={() => setActiveTab('preview')}
                   className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'preview' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
                 >
-                  Live Preview
+                  HTML Prototype
                 </button>
             </div>
           </div>
@@ -71,48 +76,29 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
       )}
 
       <div className="flex-grow overflow-y-auto custom-scrollbar">
-        {activeTab === 'tokens' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                {/* Colors */}
+        {activeTab === 'editor' ? (
+            <div className="animate-fade-in space-y-8">
+                <VisualDesignEditor system={designSystem} onUpdate={handleUpdate} />
+                
+                {/* Core Component Specs (Read Only for now, visual editor focuses on tokens) */}
                 <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/5">
-                <h3 className="text-xl font-bold text-brand-accent mb-6 border-b border-white/10 pb-4 uppercase tracking-widest text-xs">Color Palette</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {designSystem.colorPalette.map((color, idx) => (
-                    <div key={idx} className="group">
-                        <div 
-                            className="h-16 w-full rounded-xl shadow-lg mb-3 ring-1 ring-white/10 transition-transform transform group-hover:scale-105"
-                            style={{ backgroundColor: color.hex }}
-                        ></div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-white">{color.name}</span>
-                            <span className="text-[10px] font-mono text-glass-text-secondary">{color.hex}</span>
-                        </div>
-                        <p className="text-[10px] text-glass-text-secondary mt-1 leading-tight">{color.usage}</p>
-                    </div>
-                    ))}
-                </div>
-                </div>
-
-                {/* Typography & Layout */}
-                <div className="space-y-6">
-                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/5">
-                        <h3 className="text-xl font-bold text-brand-accent mb-6 border-b border-white/10 pb-4 uppercase tracking-widest text-xs">Typography</h3>
-                        <div className="space-y-4">
-                            {designSystem.typography.map((type, idx) => (
-                            <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/5 p-4 rounded-xl border border-white/5">
-                                <div>
-                                    <span className="text-[10px] uppercase tracking-widest text-glass-text-secondary block font-bold mb-1">{type.role}</span>
-                                    <span className="font-semibold text-white text-base">{type.fontFamily}</span>
+                    <h3 className="text-xl font-bold text-brand-accent mb-6 border-b border-white/10 pb-4 uppercase tracking-widest text-xs">Core Component Library</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {designSystem.coreComponents.map((comp, idx) => (
+                            <div key={idx} className="bg-white/5 p-5 rounded-xl border border-white/5 hover:border-brand-secondary/30 transition-all group">
+                                <div className="flex justify-between items-start mb-3">
+                                    <h4 className="font-bold text-white tracking-tight">{comp.name}</h4>
                                 </div>
-                                <span className="text-xs font-mono bg-black/40 px-3 py-1 rounded-lg text-brand-secondary border border-white/5">{type.size}</span>
+                                <p className="text-xs text-glass-text-secondary mb-4 leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">{comp.description}</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {comp.states.map((state, sIdx) => (
+                                        <span key={sIdx} className="text-[9px] font-bold px-2 py-0.5 bg-black/40 text-glass-text-secondary rounded-full border border-white/5 uppercase tracking-widest">
+                                            {state}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/5">
-                        <h3 className="text-xl font-bold text-brand-accent mb-2 uppercase tracking-widest text-xs">Layout Strategy</h3>
-                        <p className="text-sm text-blue-100 italic leading-relaxed">"{designSystem.layoutStrategy}"</p>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -158,29 +144,6 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
                         </button>
                     </div>
                  )}
-            </div>
-        )}
-
-        {activeTab === 'tokens' && (
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/5 mb-8">
-                <h3 className="text-xl font-bold text-brand-accent mb-6 border-b border-white/10 pb-4 uppercase tracking-widest text-xs">Core Component Library</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {designSystem.coreComponents.map((comp, idx) => (
-                        <div key={idx} className="bg-white/5 p-5 rounded-xl border border-white/5 hover:border-brand-secondary/30 transition-all group">
-                            <div className="flex justify-between items-start mb-3">
-                                <h4 className="font-bold text-white tracking-tight">{comp.name}</h4>
-                            </div>
-                            <p className="text-xs text-glass-text-secondary mb-4 leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">{comp.description}</p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {comp.states.map((state, sIdx) => (
-                                    <span key={sIdx} className="text-[9px] font-bold px-2 py-0.5 bg-black/40 text-glass-text-secondary rounded-full border border-white/5 uppercase tracking-widest">
-                                        {state}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
             </div>
         )}
       </div>

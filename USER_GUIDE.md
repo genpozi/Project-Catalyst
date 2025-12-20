@@ -26,36 +26,39 @@
 ### 1. Multi-Modal Intake
 *   **Text:** Type your idea in the main input box.
 *   **Image:** Upload a whiteboard sketch, napkin drawing, or wireframe. The AI will analyze visual layout hints.
-*   **Voice:** Click "Record Voice Memo" to speak your idea. The AI will listen, summarize your concept, and auto-detect constraints and project types.
+*   **Voice:** Click "Voice Input" to speak your idea. The AI will listen, summarize your concept, and auto-detect constraints.
 
-### 2. The Blueprint Generation Loop
-The app moves through several technical phases. In each phase, the AI makes decisions based on your initial constraints.
-*   **Architecture:** Selection of Tech Stack and generation of `main.tf` Terraform code.
-*   **Data Model:** Full database schema creation with Mermaid.js diagrams.
-*   **UI/UX:** Design tokens and a live HTML wireframe preview.
-*   **Code Forge:** The final bundle includes `package.json` (or `requirements.txt`) and a Git initialization script.
+### 2. Visual Architecture & Diagrams
+*   **Interactive Graphs:** In the Architecture and Data Model views, you can drag nodes to rearrange them.
+*   **✨ Auto-Organize:** Click the "Organize" button to have the AI intelligently untangle your diagram.
+*   **📷 PNG Export:** Download high-resolution images of your architecture to include in external reports.
 
-### 3. Blueprint Studio (Refine & Edit)
+### 3. Presentation Mode (Pitch Deck)
+*   **The Problem:** You need to explain your technical vision to non-technical stakeholders.
+*   **The Solution:** Click **"Present Deck"** in the Document phase. 0relai transforms your specs into a beautiful, full-screen slide deck covering Strategy, Architecture, Roadmap, and Costs.
+
+### 4. Blueprint Studio (Refine & Edit)
 Once the specs are generated, you enter the **Blueprint Studio**.
 *   **Visual vs Code:** Toggle between a friendly UI view and the raw JSON.
+*   **Visual Diff:** Compare current changes against saved Snapshots to see exactly what has changed.
 *   **Refine with AI:** Don't like a decision? Type a command in the input bar.
     *   *Example:* "Switch the database to PostgreSQL and add a 'comments' table."
-*   **Version History:** Create snapshots of your architecture to safely experiment.
 
-### 4. Agent Rules Engine
-The app generates a `.cursorrules` (or System Prompt) file.
-*   **Usage:** Copy this file into the root of your project when using AI code editors like Cursor, Windsurf, or GitHub Copilot. It prevents the AI from "hallucinating" or using the wrong libraries.
+### 5. "Self-Healing" Drift Detection
+In the **Launch** phase (Verify tab), you can audit your actual code against the plan.
+*   **Run `tree`** in your terminal.
+*   **Paste the output** into the Drift Analyzer.
+*   **Analyze:** 0relai will highlight missing files or unexpected additions.
 
-### 5. Workspace & Task Implementation
-*   **Kanban Board:** A workspace to track progress.
-*   **Export:** Click "Export to Jira/Linear (CSV)" to move your tasks to your project management tool.
-*   **Task Assistant:** Click **"Generate Implementation Guide"** on any task to get a specific mini-tutorial.
+### 6. Local Intelligence (Beta)
+*   Go to **Settings** to initialize the Local Engine (WebLLM).
+*   Once loaded (requires ~1.5GB download), you can switch the Assistant Chat to **"Local Architect"**.
+*   This allows you to chat with your blueprint data **offline** without sending prompts to the cloud.
 
-### 6. The Handover (Kickoff)
+### 7. The Handover (Kickoff)
 Finally, download the **Developer Bundle (.zip)**.
 It includes:
 *   `setup_repo.sh`: A script to initialize Git and create the GitHub repo.
-*   `scaffold.sh`: A script to create your folder structure.
 *   `package.json` / `requirements.txt`: Your dependency list.
 *   `infrastructure/main.tf`: Terraform configuration.
 *   `.cursorrules`: The brain for your AI coding assistant.

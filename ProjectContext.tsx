@@ -1,6 +1,14 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { ProjectData, AppPhase, Task, Snapshot } from './types';
+import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus } from './types';
+import { db } from './utils/db';
+import { cliSync } from './utils/CLISyncService';
+
+interface UIState {
+    selectedFilePath?: string;
+    selectedDocId?: string;
+    selectedNodeId?: string;
+}
 
 interface ProjectState {
   currentPhase: AppPhase;
@@ -9,6 +17,10 @@ interface ProjectState {
   error: string | null;
   unlockedPhases: AppPhase[];
   projectsList: { id: string; name: string; lastUpdated: number }[];
+  marketplace: ProjectData[];
+  localEngine: LocalEngineState;
+  syncStatus: SyncStatus;
+  ui: UIState;
 }
 
 type ProjectAction =
@@ -22,10 +34,25 @@ type ProjectAction =
   | { type: 'UNLOCK_PHASE'; payload: AppPhase }
   | { type: 'CREATE_SNAPSHOT'; payload: { name: string; description: string } }
   | { type: 'RESTORE_SNAPSHOT'; payload: string }
-  | { type: 'DELETE_SNAPSHOT'; payload: string };
+  | { type: 'DELETE_SNAPSHOT'; payload: string }
+  | { type: 'ADD_COMMENT'; payload: Comment }
+  | { type: 'RESOLVE_COMMENT'; payload: string }
+  | { type: 'ADD_COLLABORATOR'; payload: Collaborator }
+  | { type: 'PUBLISH_PROJECT'; payload: { tags: string[], author: string } }
+  | { type: 'LIKE_PROJECT'; payload: string }
+  | { type: 'IMPORT_FROM_MARKETPLACE'; payload: ProjectData }
+  | { type: 'ADD_KNOWLEDGE_DOC'; payload: KnowledgeDoc }
+  | { type: 'DELETE_KNOWLEDGE_DOC'; payload: string }
+  | { type: 'SYNC_PROJECTS_LIST'; payload: any[] }
+  | { type: 'TOGGLE_PLUGIN'; payload: string }
+  | { type: 'UPDATE_LOCAL_ENGINE'; payload: Partial<LocalEngineState> }
+  | { type: 'SET_SYNC_STATUS'; payload: SyncStatus }
+  | { type: 'SET_SELECTED_FILE'; payload: string | undefined }
+  | { type: 'SET_SELECTED_DOC'; payload: string | undefined }
+  | { type: 'SET_SELECTED_NODE'; payload: string | undefined };
 
 const SAVED_STATE_KEY = '0relai-project-state-v2';
-const PROJECTS_COLLECTION_KEY = '0relai-all-projects';
+const MARKETPLACE_KEY = '0relai-marketplace';
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -34,7 +61,15 @@ const createNewProject = (idea: string = ''): ProjectData => ({
   name: idea ? idea.substring(0, 20) + (idea.length > 20 ? '...' : '') : 'Untitled Project',
   initialIdea: idea,
   lastUpdated: Date.now(),
-  snapshots: []
+  snapshots: [],
+  comments: [],
+  knowledgeBase: [],
+  activePlugins: [],
+  collaborators: [
+      { id: 'me', name: 'You', email: 'you@example.com', role: 'Owner', avatar: '😎', status: 'active' }
+  ],
+  isPublished: false,
+  likes: 0
 });
 
 const initialState: ProjectState = {
@@ -43,7 +78,16 @@ const initialState: ProjectState = {
   isLoading: false,
   error: null,
   unlockedPhases: [AppPhase.IDEA],
-  projectsList: []
+  projectsList: [],
+  marketplace: [],
+  localEngine: {
+      status: 'unloaded',
+      progress: '',
+      progressValue: 0,
+      progressPhase: 'init'
+  },
+  syncStatus: 'disconnected',
+  ui: {}
 };
 
 const projectReducer = (state: ProjectState, action: ProjectAction): ProjectState => {
@@ -56,6 +100,7 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
       const unlocked = [...state.unlockedPhases];
       const checkPhases = [
         { key: 'brainstormingResults', phase: AppPhase.BRAINSTORM },
+        { key: 'knowledgeBase', phase: AppPhase.KNOWLEDGE_BASE },
         { key: 'researchReport', phase: AppPhase.RESEARCH },
         { key: 'architecture', phase: AppPhase.ARCHITECTURE },
         { key: 'schema', phase: AppPhase.DATAMODEL },
@@ -68,7 +113,9 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
         { key: 'tasks', phase: AppPhase.WORKSPACE },
       ];
       checkPhases.forEach(({ key, phase }) => {
-        if ((updatedData as any)[key] && !unlocked.includes(phase)) unlocked.push(phase);
+        if ((updatedData as any)[key] && Array.isArray((updatedData as any)[key]) ? (updatedData as any)[key].length > 0 : (updatedData as any)[key]) {
+             if (!unlocked.includes(phase)) unlocked.push(phase);
+        }
       });
       return { ...state, projectData: updatedData, unlockedPhases: Array.from(new Set(unlocked)) };
     case 'SET_LOADING':
@@ -76,13 +123,20 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     case 'RESET_PROJECT':
-      return { ...initialState, projectData: createNewProject(), projectsList: state.projectsList };
+      return { 
+          ...state, 
+          projectData: createNewProject(), 
+          currentPhase: AppPhase.IDEA,
+          unlockedPhases: [AppPhase.IDEA],
+          ui: {}
+      };
     case 'LOAD_PROJECT':
       return { 
         ...state, 
         projectData: action.payload, 
         currentPhase: AppPhase.IDEA,
-        unlockedPhases: [AppPhase.IDEA] // Reset unlocks to trigger recalculation via effect or manual check
+        unlockedPhases: [AppPhase.IDEA],
+        ui: {}
       };
     case 'DELETE_PROJECT':
       return {
@@ -94,14 +148,13 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
     
     case 'CREATE_SNAPSHOT': {
       const { name, description } = action.payload;
-      // Capture key architectural state, excluding the snapshots array itself to avoid recursion depth issues
-      const { snapshots, ...currentState } = state.projectData;
+      const { snapshots, comments, ...currentState } = state.projectData;
       const newSnapshot: Snapshot = {
         id: generateId(),
         name,
         description,
         timestamp: Date.now(),
-        data: JSON.parse(JSON.stringify(currentState)) // Deep copy
+        data: JSON.parse(JSON.stringify(currentState))
       };
       return {
         ...state,
@@ -115,17 +168,17 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
     case 'RESTORE_SNAPSHOT': {
       const snapshotToRestore = state.projectData.snapshots?.find(s => s.id === action.payload);
       if (!snapshotToRestore) return state;
-      
       return {
         ...state,
         projectData: {
           ...state.projectData,
           ...snapshotToRestore.data,
-          // Preserve current snapshots list and ID/Name to maintain project identity
           snapshots: state.projectData.snapshots,
           id: state.projectData.id,
           name: state.projectData.name,
-          initialIdea: state.projectData.initialIdea
+          initialIdea: state.projectData.initialIdea,
+          comments: state.projectData.comments,
+          collaborators: state.projectData.collaborators
         }
       };
     }
@@ -140,6 +193,141 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
       };
     }
 
+    case 'ADD_COMMENT':
+      return {
+        ...state,
+        projectData: {
+          ...state.projectData,
+          comments: [...(state.projectData.comments || []), action.payload]
+        }
+      };
+
+    case 'RESOLVE_COMMENT':
+      return {
+        ...state,
+        projectData: {
+          ...state.projectData,
+          comments: state.projectData.comments?.map(c => 
+            c.id === action.payload ? { ...c, resolved: !c.resolved } : c
+          ) || []
+        }
+      };
+
+    case 'ADD_COLLABORATOR':
+      return {
+        ...state,
+        projectData: {
+          ...state.projectData,
+          collaborators: [...(state.projectData.collaborators || []), action.payload]
+        }
+      };
+
+    case 'PUBLISH_PROJECT': {
+        const publishedCopy: ProjectData = {
+            ...state.projectData,
+            id: `pub-${generateId()}`,
+            isPublished: true,
+            author: action.payload.author,
+            tags: action.payload.tags,
+            likes: 0,
+            lastUpdated: Date.now(),
+            chatHistory: [],
+            snapshots: [],
+            comments: []
+        };
+        const newMarketplace = [publishedCopy, ...state.marketplace];
+        localStorage.setItem(MARKETPLACE_KEY, JSON.stringify(newMarketplace));
+        return {
+            ...state,
+            projectData: { ...state.projectData, isPublished: true },
+            marketplace: newMarketplace
+        };
+    }
+
+    case 'LIKE_PROJECT': {
+        const newMarketplace = state.marketplace.map(p => 
+            p.id === action.payload ? { ...p, likes: (p.likes || 0) + 1 } : p
+        );
+        localStorage.setItem(MARKETPLACE_KEY, JSON.stringify(newMarketplace));
+        return { ...state, marketplace: newMarketplace };
+    }
+
+    case 'IMPORT_FROM_MARKETPLACE': {
+        const newProject: ProjectData = {
+            ...action.payload,
+            id: generateId(),
+            name: `${action.payload.name} (Fork)`,
+            isPublished: false,
+            author: undefined,
+            likes: 0,
+            lastUpdated: Date.now(),
+            collaborators: [
+                { id: 'me', name: 'You', email: 'you@example.com', role: 'Owner', avatar: '😎', status: 'active' }
+            ]
+        };
+        return {
+            ...state,
+            projectData: newProject,
+            currentPhase: AppPhase.IDEA,
+            unlockedPhases: [AppPhase.IDEA]
+        };
+    }
+
+    case 'ADD_KNOWLEDGE_DOC':
+        return {
+            ...state,
+            projectData: {
+                ...state.projectData,
+                knowledgeBase: [...(state.projectData.knowledgeBase || []), action.payload]
+            }
+        };
+
+    case 'DELETE_KNOWLEDGE_DOC':
+        return {
+            ...state,
+            projectData: {
+                ...state.projectData,
+                knowledgeBase: state.projectData.knowledgeBase?.filter(doc => doc.id !== action.payload) || []
+            }
+        };
+
+    case 'SYNC_PROJECTS_LIST':
+        return { ...state, projectsList: action.payload };
+
+    case 'TOGGLE_PLUGIN': {
+        const currentPlugins = state.projectData.activePlugins || [];
+        const isEnabled = currentPlugins.includes(action.payload);
+        const newPlugins = isEnabled 
+            ? currentPlugins.filter(id => id !== action.payload)
+            : [...currentPlugins, action.payload];
+        
+        return {
+            ...state,
+            projectData: {
+                ...state.projectData,
+                activePlugins: newPlugins
+            }
+        };
+    }
+
+    case 'UPDATE_LOCAL_ENGINE':
+        return {
+            ...state,
+            localEngine: { ...state.localEngine, ...action.payload }
+        };
+
+    case 'SET_SYNC_STATUS':
+        return { ...state, syncStatus: action.payload };
+
+    case 'SET_SELECTED_FILE':
+        return { ...state, ui: { ...state.ui, selectedFilePath: action.payload, selectedDocId: undefined, selectedNodeId: undefined } };
+
+    case 'SET_SELECTED_DOC':
+        return { ...state, ui: { ...state.ui, selectedDocId: action.payload, selectedFilePath: undefined, selectedNodeId: undefined } };
+
+    case 'SET_SELECTED_NODE':
+        return { ...state, ui: { ...state.ui, selectedNodeId: action.payload, selectedFilePath: undefined, selectedDocId: undefined } };
+
     default:
       return state;
   }
@@ -151,38 +339,61 @@ const ProjectContext = createContext<{
 } | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(projectReducer, initialState, (initial) => {
-    try {
-      const saved = localStorage.getItem(SAVED_STATE_KEY);
-      const projects = JSON.parse(localStorage.getItem(PROJECTS_COLLECTION_KEY) || '[]');
-      return saved ? { ...JSON.parse(saved), projectsList: projects } : { ...initial, projectsList: projects };
-    } catch {
-      return initial;
-    }
-  });
+  const [state, dispatch] = useReducer(projectReducer, initialState);
 
-  // Save current project state
+  // Initialize DB and Listeners
+  useEffect(() => {
+    const init = async () => {
+        try {
+            await db.init();
+            
+            // CLI Bridge Listener
+            cliSync.subscribeStatus((status) => {
+                dispatch({ type: 'SET_SYNC_STATUS', payload: status });
+            });
+
+            const marketplace = JSON.parse(localStorage.getItem(MARKETPLACE_KEY) || '[]');
+            const projectsList = await db.getAllProjectsMeta();
+            dispatch({ type: 'SYNC_PROJECTS_LIST', payload: projectsList });
+
+            const savedStateStr = localStorage.getItem(SAVED_STATE_KEY);
+            if (savedStateStr) {
+                const savedState = JSON.parse(savedStateStr);
+                if (savedState.projectData && savedState.projectData.id) {
+                    const fullProject = await db.getProject(savedState.projectData.id);
+                    if (fullProject) {
+                        dispatch({ type: 'LOAD_PROJECT', payload: fullProject });
+                        dispatch({ type: 'SET_PHASE', payload: savedState.currentPhase });
+                        savedState.unlockedPhases.forEach((p: AppPhase) => dispatch({ type: 'UNLOCK_PHASE', payload: p }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Initialization failed", e);
+        }
+    };
+    init();
+  }, []);
+
+  // Save changes to DB
   useEffect(() => {
     localStorage.setItem(SAVED_STATE_KEY, JSON.stringify({
       currentPhase: state.currentPhase,
-      projectData: state.projectData,
+      projectData: { id: state.projectData.id, name: state.projectData.name }, 
       unlockedPhases: state.unlockedPhases
     }));
 
-    // Update Project Index
-    const existing = JSON.parse(localStorage.getItem(PROJECTS_COLLECTION_KEY) || '[]');
-    const index = existing.findIndex((p: any) => p.id === state.projectData.id);
-    const meta = { id: state.projectData.id, name: state.projectData.name, lastUpdated: state.projectData.lastUpdated };
+    const saveToDB = async () => {
+        if (state.projectData.id && !state.projectData.id.startsWith('pub-')) {
+            await db.saveProject(state.projectData);
+            const list = await db.getAllProjectsMeta();
+            dispatch({ type: 'SYNC_PROJECTS_LIST', payload: list });
+        }
+    };
     
-    if (index > -1) {
-      existing[index] = meta;
-    } else if (state.projectData.initialIdea) {
-      existing.push(meta);
-    }
-    
-    // Persist full data for each project separately to avoid quota issues on one key
-    localStorage.setItem(`0relai-proj-${state.projectData.id}`, JSON.stringify(state.projectData));
-    localStorage.setItem(PROJECTS_COLLECTION_KEY, JSON.stringify(existing));
+    const timeout = setTimeout(saveToDB, 1000);
+    return () => clearTimeout(timeout);
+
   }, [state.projectData, state.currentPhase, state.unlockedPhases]);
 
   return (

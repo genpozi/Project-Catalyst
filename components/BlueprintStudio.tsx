@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { ProjectData, Snapshot } from '../types';
+import { ProjectData, Snapshot, Comment } from '../types';
 import ArchitectureView from './ArchitectureView';
 import DataModelView from './DataModelView';
 import FileStructureView from './FileStructureView';
 import DesignSystemView from './DesignSystemView';
 import ApiSpecView from './ApiSpecView';
 import SecurityView from './SecurityView';
+import CommentsPanel from './CommentsPanel';
 import MarkdownRenderer from './MarkdownRenderer';
 import { GeminiService } from '../GeminiService';
 import { useProject } from '../ProjectContext';
+import { useToast } from './Toast';
+import DiffViewer from './DiffViewer';
 
 interface BlueprintStudioProps {
   projectData: ProjectData;
@@ -27,7 +30,8 @@ const SnapshotModal: React.FC<{
     onRestore: (id: string) => void; 
     onCreate: (name: string, description: string) => void;
     onDelete: (id: string) => void;
-}> = ({ snapshots, onClose, onRestore, onCreate, onDelete }) => {
+    onCompare: (snapshot: Snapshot) => void;
+}> = ({ snapshots, onClose, onRestore, onCreate, onDelete, onCompare }) => {
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
 
@@ -86,6 +90,12 @@ const SnapshotModal: React.FC<{
                                     </div>
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button 
+                                            onClick={() => onCompare(snap)}
+                                            className="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-bold flex items-center gap-1"
+                                        >
+                                            <span className="text-base">⚖️</span> Compare
+                                        </button>
+                                        <button 
                                             onClick={() => { if(window.confirm('Restore this version? Current unsaved changes will be lost.')) onRestore(snap.id); }}
                                             className="px-3 py-1.5 text-xs bg-brand-primary hover:bg-brand-accent text-white rounded-lg transition-colors font-bold"
                                         >
@@ -95,7 +105,7 @@ const SnapshotModal: React.FC<{
                                             onClick={() => onDelete(snap.id)}
                                             className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
                                 </div>
@@ -110,14 +120,19 @@ const SnapshotModal: React.FC<{
 
 const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate, onRefine, onContinue, isRefining }) => {
   const { dispatch } = useProject();
+  const { addToast } = useToast();
+  
   const [activeTab, setActiveTab] = useState<Tab>('Architecture');
-  const [isEditing, setIsEditing] = useState(false);
+  const [mode, setMode] = useState<'visual' | 'code' | 'diff'>('visual');
   const [jsonContent, setJsonContent] = useState('');
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [refinePrompt, setRefinePrompt] = useState('');
   const [healthReport, setHealthReport] = useState<string | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
+  const [isFixingJson, setIsFixingJson] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [compareSnapshot, setCompareSnapshot] = useState<Snapshot | null>(null);
 
   const gemini = React.useMemo(() => new GeminiService(), []);
 
@@ -153,7 +168,9 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   const handleRefineSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!refinePrompt.trim() || isRefining) return;
+    addToast("Refining blueprint...", "info");
     await onRefine(activeTab, refinePrompt);
+    addToast("Refinement complete!", "success");
     setRefinePrompt('');
   };
 
@@ -163,8 +180,10 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
     try {
       const report = await gemini.runProjectHealthCheck(projectData);
       setHealthReport(report);
+      addToast("Health check completed", "success");
     } catch (e) {
       setHealthReport("Health check failed. Ensure all blueprint segments are generated.");
+      addToast("Health check failed", "error");
     } finally {
       setIsCheckingHealth(false);
     }
@@ -172,18 +191,69 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
 
   const handleCreateSnapshot = (name: string, desc: string) => {
       dispatch({ type: 'CREATE_SNAPSHOT', payload: { name, description: desc } });
+      addToast(`Snapshot '${name}' saved`, "success");
   };
 
   const handleRestoreSnapshot = (id: string) => {
       dispatch({ type: 'RESTORE_SNAPSHOT', payload: id });
       setShowSnapshots(false);
+      setCompareSnapshot(null);
+      setMode('visual');
+      addToast("Version restored successfully", "success");
   };
 
   const handleDeleteSnapshot = (id: string) => {
       dispatch({ type: 'DELETE_SNAPSHOT', payload: id });
+      addToast("Snapshot deleted", "info");
+  };
+
+  const handleCompareSnapshot = (snapshot: Snapshot) => {
+      setCompareSnapshot(snapshot);
+      setMode('diff');
+      setShowSnapshots(false);
+      addToast(`Comparing with ${snapshot.name}`, "info");
+  };
+
+  const handleAutoFixJson = async () => {
+      if(!jsonContent || !jsonError) return;
+      setIsFixingJson(true);
+      try {
+          const fixed = await gemini.fixJson(jsonContent);
+          setJsonContent(JSON.stringify(fixed, null, 2));
+          setJsonError(null);
+          onUpdate({ [getDataKey(activeTab)]: fixed });
+          addToast("JSON repaired automatically", "success");
+      } catch (e) {
+          addToast('Could not fix JSON automatically.', "error");
+      } finally {
+          setIsFixingJson(false);
+      }
+  };
+
+  const handleAddComment = (text: string, section: string) => {
+      const newComment: Comment = {
+          id: Date.now().toString(),
+          text,
+          author: projectData.collaborators?.[0]?.name || 'You',
+          avatar: projectData.collaborators?.[0]?.avatar || '👤',
+          timestamp: Date.now(),
+          section,
+          resolved: false
+      };
+      dispatch({ type: 'ADD_COMMENT', payload: newComment });
+      addToast("Comment added", "success");
+  };
+
+  const handleResolveComment = (id: string) => {
+      dispatch({ type: 'RESOLVE_COMMENT', payload: id });
   };
 
   const tabs: Tab[] = ['Architecture', 'Data Model', 'Files', 'UI/UX', 'API', 'Security'];
+  const activeCommentCount = projectData.comments?.filter(c => c.section === activeTab && !c.resolved).length || 0;
+
+  // For diff mode
+  const currentJson = JSON.stringify(projectData[getDataKey(activeTab)], null, 2) || '';
+  const compareJson = compareSnapshot ? JSON.stringify(compareSnapshot.data[getDataKey(activeTab)], null, 2) || '' : '';
 
   return (
     <div className="animate-slide-in-up h-full flex flex-col">
@@ -194,6 +264,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
              onCreate={handleCreateSnapshot}
              onRestore={handleRestoreSnapshot}
              onDelete={handleDeleteSnapshot}
+             onCompare={handleCompareSnapshot}
           />
       )}
 
@@ -203,6 +274,15 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
           <p className="text-glass-text-secondary text-sm">Refine your specifications before agent rule generation.</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowComments(!showComments)}
+            className={`px-4 py-2 text-sm font-bold rounded-lg border transition-all flex items-center gap-2 ${showComments ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
+          >
+            <span>💬 Comments</span>
+            {activeCommentCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{activeCommentCount}</span>
+            )}
+          </button>
           <button
             onClick={() => setShowSnapshots(true)}
             className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
@@ -229,21 +309,24 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-[600px] relative">
+      <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-[600px] relative overflow-hidden">
         {/* Navigation Sidebar */}
         <div className="w-full lg:w-56 flex-shrink-0 flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setHealthReport(null); }}
+              onClick={() => { setActiveTab(tab); setHealthReport(null); if(mode === 'diff') setMode('visual'); }}
               disabled={isRefining}
-              className={`px-4 py-3 rounded-xl text-left font-medium transition-all whitespace-nowrap border ${
+              className={`px-4 py-3 rounded-xl text-left font-medium transition-all whitespace-nowrap border flex justify-between items-center ${
                 activeTab === tab
                   ? 'bg-brand-primary/20 text-brand-accent border-brand-primary/30 shadow-lg'
                   : 'bg-white/5 text-glass-text-secondary border-transparent hover:bg-white/10 hover:text-white'
               }`}
             >
               {tab}
+              {projectData.comments?.some(c => c.section === tab && !c.resolved) && (
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+              )}
             </button>
           ))}
         </div>
@@ -259,20 +342,36 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
 
           {/* Toolbar */}
           <div className="bg-white/5 px-4 py-2 border-b border-white/5 flex justify-between items-center">
-             <span className="text-xs font-bold text-glass-text-secondary uppercase tracking-widest">{activeTab} Layer</span>
+             <div className="flex items-center gap-3">
+                 <span className="text-xs font-bold text-glass-text-secondary uppercase tracking-widest">{activeTab} Layer</span>
+                 {mode === 'diff' && compareSnapshot && (
+                     <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white flex items-center gap-1">
+                         Comparing vs <span className="font-bold">{compareSnapshot.name}</span>
+                         <button onClick={() => { setMode('visual'); setCompareSnapshot(null); }} className="ml-1 hover:text-red-400">✕</button>
+                     </span>
+                 )}
+             </div>
+             
              <div className="flex items-center gap-2 bg-black/30 rounded-lg p-1">
                 <button 
-                  onClick={() => setIsEditing(false)}
-                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded transition-all ${!isEditing ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+                  onClick={() => { setMode('visual'); setCompareSnapshot(null); }}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded transition-all ${mode === 'visual' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
                 >
                   Visual
                 </button>
                 <button 
-                  onClick={() => setIsEditing(true)}
-                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded transition-all ${isEditing ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+                  onClick={() => { setMode('code'); setCompareSnapshot(null); }}
+                  className={`px-3 py-1 text-[10px] font-bold uppercase rounded transition-all ${mode === 'code' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
                 >
                   Code
                 </button>
+                {mode === 'diff' && (
+                    <button 
+                      className={`px-3 py-1 text-[10px] font-bold uppercase rounded transition-all bg-brand-primary text-white shadow`}
+                    >
+                      Diff
+                    </button>
+                )}
              </div>
           </div>
 
@@ -285,20 +384,35 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                   </div>
                   <MarkdownRenderer content={healthReport} />
                </div>
-             ) : isEditing ? (
-               <div className="h-full flex flex-col">
+             ) : mode === 'code' ? (
+               <div className="h-full flex flex-col relative bg-[#0b0e14] rounded-xl border border-white/10 overflow-hidden">
+                 <div className="absolute top-0 left-0 bottom-0 w-8 bg-white/5 border-r border-white/5 flex flex-col items-center pt-4 text-[10px] text-glass-text-secondary font-mono select-none">
+                     {/* Fake Line Numbers */}
+                     {Array.from({length: 30}).map((_, i) => <div key={i}>{i+1}</div>)}
+                 </div>
                  <textarea
                     value={jsonContent}
                     onChange={handleJsonChange}
-                    className="flex-grow w-full bg-black/40 text-blue-200 font-mono text-sm p-4 rounded-xl border border-white/10 focus:border-brand-accent focus:outline-none resize-none shadow-inner"
+                    className="flex-grow w-full bg-transparent text-blue-200 font-mono text-sm p-4 pl-10 focus:outline-none resize-none leading-relaxed"
                     spellCheck={false}
                  />
                  {jsonError && (
-                    <div className="mt-2 bg-red-900/40 text-red-200 px-4 py-2 rounded-lg text-xs border border-red-700/50 animate-pulse">
-                        Syntax Warning: {jsonError}
+                    <div className="absolute bottom-4 right-4 bg-red-900/90 text-red-200 px-4 py-2 rounded-lg text-xs border border-red-700/50 animate-pulse backdrop-blur flex items-center gap-3">
+                        <span>Syntax Warning: {jsonError}</span>
+                        <button 
+                            onClick={handleAutoFixJson}
+                            disabled={isFixingJson}
+                            className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[10px] uppercase font-bold border border-white/20"
+                        >
+                            {isFixingJson ? 'Fixing...' : 'Auto-Fix'}
+                        </button>
                     </div>
                  )}
                </div>
+             ) : mode === 'diff' ? (
+                 <div className="h-full animate-fade-in">
+                     <DiffViewer oldCode={compareJson} newCode={currentJson} />
+                 </div>
              ) : (
                 <div className="h-full flex flex-col">
                   {activeTab === 'Architecture' && <ArchitectureView architecture={projectData.architecture} onContinue={() => {}} hideActions={true} />}
@@ -312,25 +426,39 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
           </div>
 
           {/* AI Refinement Bar */}
-          <div className="bg-white/5 border-t border-white/5 p-4">
-             <form onSubmit={handleRefineSubmit} className="flex gap-2">
-                <input 
-                    type="text" 
-                    value={refinePrompt}
-                    onChange={(e) => setRefinePrompt(e.target.value)}
-                    placeholder={`Instruct Architect to refine the ${activeTab} layer...`}
-                    className="flex-grow glass-input rounded-xl px-4 py-3 text-white focus:outline-none placeholder-white/20"
-                />
-                <button 
-                    type="submit" 
-                    disabled={!refinePrompt.trim() || isRefining}
-                    className="glass-button-primary hover:scale-105 disabled:opacity-50 disabled:grayscale text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg"
-                >
-                    {isRefining ? 'Thinking...' : <span>✨ Refine</span>}
-                </button>
-             </form>
-          </div>
+          {mode === 'visual' && (
+              <div className="bg-white/5 border-t border-white/5 p-4">
+                 <form onSubmit={handleRefineSubmit} className="flex gap-2">
+                    <input 
+                        type="text" 
+                        value={refinePrompt}
+                        onChange={(e) => setRefinePrompt(e.target.value)}
+                        placeholder={`Instruct Architect to refine the ${activeTab} layer...`}
+                        className="flex-grow glass-input rounded-xl px-4 py-3 text-white focus:outline-none placeholder-white/20"
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={!refinePrompt.trim() || isRefining}
+                        className="glass-button-primary hover:scale-105 disabled:opacity-50 disabled:grayscale text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg"
+                    >
+                        {isRefining ? 'Thinking...' : <span>✨ Refine</span>}
+                    </button>
+                 </form>
+              </div>
+          )}
         </div>
+
+        {/* Comments Sidebar */}
+        {showComments && (
+            <CommentsPanel 
+                section={activeTab}
+                comments={projectData.comments || []}
+                currentUser={projectData.collaborators?.[0] || { id: 'me', name: 'You', email: '', role: 'Owner', avatar: '😎', status: 'active' }}
+                onAddComment={handleAddComment}
+                onResolveComment={handleResolveComment}
+                onClose={() => setShowComments(false)}
+            />
+        )}
       </div>
     </div>
   );

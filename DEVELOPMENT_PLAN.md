@@ -1,84 +1,79 @@
 
-# Project Vision: 0relai (Zero Reliance) - Master Development Plan
+# 0relai (Zero Reliance) - Master Development Plan
 
 ## 🎯 Executive Summary
 0relai acts as a "Genius Full-Stack Architect," making high-level technical decisions so that human developers and AI coding agents can focus on implementation with zero ambiguity.
 
-## 🗺️ The 10-Epic Roadmap (Phase 2: "Make it Real")
+## 🗺️ The Roadmap
 
-### 🏗️ Core Infrastructure
+### ✅ Phase 1: Core Infrastructure (Completed)
+- [x] **State Architecture:** Decoupled `App.tsx` context.
+- [x] **Strict Schemas:** Typed JSON generation via Gemini API.
+- [x] **Persistence:** LocalStorage and IndexedDB implementation.
 
-#### **EPIC 1: The Monolith Breakup (State Architecture)**
-**Goal:** Decouple `App.tsx` into a robust Context-based architecture.
-*   **Status:** ✅ Complete
-*   **Outcome:** Implemented `ProjectContext` and `useProjectReducer`. API calls centralized in `GeminiService`.
+### ✅ Phase 2: Intelligence & Reasoning (Completed)
+- [x] **Thinking Models:** Integrated Gemini 2.0 Flash Thinking for complex tasks.
+- [x] **Grounded Research:** Google Search integration for up-to-date tech stacks.
+- [x] **Live Architect:** Voice-to-Audio real-time architectural discussions.
 
-#### **EPIC 2: Synapse Reinforcement (Strict Schemas)**
-**Goal:** Eliminate "JSON Parse Errors" and hallucinated data structures.
-*   **Status:** ✅ Complete
-*   **Outcome:** All Gemini API calls use strictly typed `responseSchema`.
+### ✅ Phase 3: Visualization & UX (Completed)
+- [x] **Blueprint Studio:** Split-view editor with AI Refinement.
+- [x] **Visual Cortex:** Interactive C4 and ERD diagrams with Mermaid.js.
+- [x] **AI Layout Engine:** Auto-organize nodes and edges using spatial reasoning.
+- [x] **Presentation Deck:** "Pitch Mode" for stakeholder reviews.
 
-#### **EPIC 3: Memory Persistence (Storage Engine)**
-**Goal:** Prevent data loss and allow multiple projects.
-*   **Status:** ✅ Complete
-*   **Outcome:** `localStorage` implementation with project gallery and save/load/delete functionality.
-
-### 🧠 Intelligence & Reasoning
-
-#### **EPIC 4: Deep Thought Integration (Thinking Models)**
-**Goal:** Utilize Gemini's reasoning capabilities for complex tasks.
-*   **Status:** ✅ Complete
-*   **Outcome:** Configured `thinkingBudget` for Architecture and Security phases using `gemini-3-pro-preview`.
-
-#### **EPIC 5: Grounded Research (Web Search)**
-**Goal:** Ensure technical recommendations are up-to-date.
-*   **Status:** ✅ Complete
-*   **Outcome:** Research phase uses `googleSearch` tool to provide sourced feasibility reports.
-
-### 👁️ Visualization & UX
-
-#### **EPIC 6: The Architect's Studio (Interactive Editor)**
-**Goal:** Make the "Blueprint Studio" a true workspace.
-*   **Status:** ✅ Complete
-*   **Outcome:** Split-view editor, AI Refinement Bar, Snapshot/Versioning system implemented.
-
-#### **EPIC 7: Visual Cortex (Diagram Interactivity)**
-**Goal:** Make diagrams usable for large projects.
-*   **Status:** ✅ Complete
-*   **Outcome:** Mermaid.js integration for C4 Architecture and ERD diagrams with "Edit in Live Editor" deep links.
-
-### 🚀 Execution & Handoff
-
-#### **EPIC 8: Task Processor (Advanced Kanban)**
-**Goal:** Turn high-level plans into executable tickets.
-*   **Status:** ✅ Complete
-*   **Outcome:** Kanban board with sub-tasks, checklists, and AI-generated Implementation Guides per task.
-
-#### **EPIC 9: The Code Forge (Scaffolding Engine)**
-**Goal:** Generate *actual* code, not just empty files.
-*   **Status:** ✅ Complete
-*   **Outcome:** The "Launch" bundle now includes:
-    *   `package.json` / `requirements.txt` (Auto-generated based on stack).
-    *   `setup_repo.sh` (Auto-generated GitHub CLI script).
-    *   `docker-compose.yml`.
-    *   Terraform `main.tf` infrastructure code.
-
-#### **EPIC 10: Agent Protocol (Context-Aware Rules)**
-**Goal:** The ultimate `.cursorrules` file.
-*   **Status:** ✅ Complete
-*   **Outcome:** Synthesizes the entire project state into a system instruction set included in the ZIP.
+### ✅ Phase 4: Ecosystem & Enterprise (Completed)
+- [x] **PWA & Offline:** Service Worker and Manifest implementation.
+- [x] **Plugin System:** Extensible registry for DevOps, Docs, and License generation.
+- [x] **Memory Palace:** RAG integration for custom documentation.
+- [x] **Drift Analysis:** Compare planned file structure vs. actual `tree` output.
 
 ---
 
-## ✅ Completed Milestones (Phase 1 & 2)
+## ✅ Phase 5: Local Intelligence (Beta)
+**Goal:** Reduce cloud dependency and enable privacy-first architecture.
 
-- [x] Multi-modal Input (Text, Image, Voice).
-- [x] Strategic Foundation (Brainstorming, Personas).
-- [x] Architecture & Stack Resolution (IaC Support).
-- [x] Data Model Engineering (Mermaid/SQL).
-- [x] Codebase Blueprinting (File Tree).
-- [x] UI/UX Design Tokens & Wireframing.
-- [x] API & Security Specs.
-- [x] Blueprint Studio (Versioning, Health Checks).
-- [x] Kanban & Task Export (Jira/Linear CSV).
-- [x] Full Code Forge Handover.
+#### **EPIC 24: WebGPU Engine Integration**
+- [x] **Status:** Beta Implementation (Settings & Chat)
+- [x] **Task:** WebGPU Compatibility Check.
+- [x] **Task:** Robust progress UI for model downloads (2GB+).
+- [ ] **Task:** "Privacy Mode" global toggle.
+
+#### **EPIC 25: Hybrid Orchestration**
+- [x] **Task:** Create `IntelligenceRouter` abstraction.
+- [ ] **Task:** Route simple tasks (Brainstorming, Refinement) to Local Engine.
+- [ ] **Task:** Route complex tasks (Architecture, Security, Code) to Cloud Engine.
+
+---
+
+## ✅ Phase 6: The IDE Bridge (Completed)
+**Goal:** Tighter integration with the developer's local environment.
+
+#### **EPIC 26: 0relai CLI**
+- [x] **Task:** Design `CLISyncService` (Frontend Client).
+- [x] **Task:** WebSocket Handshake & State Management.
+- [x] **Task:** Real-time Drift Analysis Dashboard.
+- [ ] **Task:** Implement actual Node.js CLI tool (`@0relai/cli`).
+
+---
+
+## ✅ Phase 7: Visual Builder 2.0 (Completed)
+**Goal:** Transform static diagrams into interactive engineering tools.
+
+#### **EPIC 27: Spatial Engineering**
+- [x] **Task:** Drag-and-drop Resource Palette for Architecture.
+- [x] **Task:** Edge Protocol Configuration (HTTP, gRPC, etc).
+- [x] **Task:** Persistent ERD Layouts (x/y coordinates).
+- [x] **Task:** Drag-to-Connect Foreign Keys for Schema Building.
+- [x] **Task:** Bi-directional sync between Visual Graph and JSON Spec.
+
+---
+
+## 🚀 Phase 8: Polishing & Launch (In Progress)
+**Goal:** Final UX refinements and production readiness.
+
+#### **EPIC 28: Experience Polish**
+- [ ] **Task:** Unified Dashboard with "Recent Activity".
+- [x] **Task:** Global Keyboard Shortcuts overlay.
+- [x] **Task:** Accessibility Audit (ARIA labels).
+- [x] **Task:** Mobile responsiveness (Sidebar Drawer).

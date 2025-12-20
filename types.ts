@@ -2,6 +2,7 @@
 export enum AppPhase {
   IDEA = 'Idea',
   BRAINSTORM = 'Brainstorm',
+  KNOWLEDGE_BASE = 'Knowledge',
   RESEARCH = 'Research',
   ARCHITECTURE = 'Architecture',
   DATAMODEL = 'Data Model',
@@ -29,6 +30,13 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
+export interface TaskCodeSnippet {
+  language: string;
+  code: string;
+  filename: string;
+  description: string;
+}
+
 export interface PlanTask {
   description: string;
   estimatedDuration: string;
@@ -43,6 +51,7 @@ export interface Task extends PlanTask {
   phase: string;
   implementationGuide?: string;
   checklist?: ChecklistItem[];
+  codeSnippet?: TaskCodeSnippet;
 }
 
 export interface Phase {
@@ -50,9 +59,18 @@ export interface Phase {
   tasks: PlanTask[];
 }
 
+export interface Competitor {
+  name: string;
+  url: string;
+  strengths: string[];
+  weaknesses: string[];
+  priceModel: string;
+}
+
 export interface ResearchReportData {
   summary: string;
   sources: { uri: string; title: string; }[];
+  competitors?: Competitor[];
 }
 
 export interface TechStack {
@@ -64,6 +82,26 @@ export interface TechStack {
   rationale: string;
 }
 
+export interface ArchitectureNode {
+  id: string;
+  x: number;
+  y: number;
+  type: 'frontend' | 'backend' | 'database' | 'service' | 'deployment' | 'cache' | 'queue' | 'external';
+  label: string; // Persist label in node
+  description?: string;
+  linkedPath?: string; // Path to associated folder/file in FileStructure
+  linkedDocId?: string; // ID of associated Knowledge Doc
+}
+
+export interface ArchitectureEdge {
+  id: string;
+  from: string;
+  to: string;
+  label?: string;
+  dashed?: boolean;
+  protocol?: 'HTTP' | 'WS' | 'gRPC' | 'TCP' | 'JDBC' | 'AMQP';
+}
+
 export interface ArchitectureData {
   stack: TechStack;
   patterns: string[];
@@ -71,6 +109,8 @@ export interface ArchitectureData {
   diagram?: string;
   cloudDiagram?: string;
   iacCode?: string;
+  visualLayout?: ArchitectureNode[]; // Persist node positions
+  visualEdges?: ArchitectureEdge[];  // Persist connections
 }
 
 export interface SchemaColumn {
@@ -84,6 +124,8 @@ export interface SchemaTable {
   name: string;
   description: string;
   columns: SchemaColumn[];
+  x?: number; // Persistent X coordinate
+  y?: number; // Persistent Y coordinate
 }
 
 export interface SchemaData {
@@ -98,6 +140,7 @@ export interface FileNode {
   type: 'file' | 'folder';
   description: string;
   children?: FileNode[];
+  content?: string; // Stored code content
 }
 
 export interface ColorPalette {
@@ -145,15 +188,29 @@ export interface TestRequirement {
   description: string;
 }
 
-export interface ComplianceRule {
-  standard: string;
+export interface ComplianceItem {
+  id: string;
+  standard: string; // e.g. "SOC2", "GDPR", "HIPAA"
   requirement: string;
+  action: string;
+  status: 'Pending' | 'Met' | 'N/A';
+}
+
+export interface RBACMatrix {
+  roles: string[];
+  resources: string[];
+  permissions: {
+    role: string;
+    resource: string;
+    actions: ('create' | 'read' | 'update' | 'delete')[];
+  }[];
 }
 
 export interface SecurityContext {
   policies: SecurityPolicy[];
   testingStrategy: TestRequirement[];
-  compliance: ComplianceRule[];
+  complianceChecklist: ComplianceItem[];
+  rbacMatrix?: RBACMatrix;
 }
 
 export interface CostEstimation {
@@ -163,16 +220,30 @@ export interface CostEstimation {
   risks: { description: string; impact: string }[];
 }
 
+export interface DevOpsConfig {
+  dockerfile: string;
+  dockerCompose: string;
+  ciPipeline: string; // GitHub Actions YAML
+  deploymentGuide: string;
+}
+
 export interface Persona {
   role: string;
   description: string;
   painPoints: string[];
 }
 
+export interface UserJourney {
+  personaRole: string;
+  goal: string;
+  steps: string[];
+}
+
 export interface BrainstormingData {
   questions: string[];
   usps: string[];
   personas: Persona[];
+  userJourneys?: UserJourney[];
   features: string[];
 }
 
@@ -184,6 +255,62 @@ export interface Snapshot {
   data: Partial<ProjectData>;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+}
+
+export interface Comment {
+  id: string;
+  text: string;
+  author: string;
+  avatar?: string;
+  timestamp: number;
+  section: string;
+  resolved: boolean;
+}
+
+export interface Collaborator {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  role: 'Owner' | 'Editor' | 'Viewer';
+  status: 'active' | 'offline';
+}
+
+export interface KnowledgeDoc {
+  id: string;
+  title: string;
+  content: string;
+  type: 'text' | 'code' | 'policy';
+  tags: string[];
+  addedAt: number;
+}
+
+export interface PluginDefinition {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  author: string;
+  icon: string;
+  category: 'DevOps' | 'Code' | 'Docs' | 'Security';
+  // Function to execute the plugin logic
+  execute: (project: ProjectData) => Promise<{ filename: string; content: string }[]>;
+}
+
+export interface AgentRuleConfig {
+  tone: 'Concise' | 'Detailed' | 'Educational';
+  language: string;
+  documentationStyle: 'JSDoc' | 'Inline' | 'Minimal';
+  errorHandling: 'TryCatch' | 'ResultType' | 'Defensive';
+  testingFramework: string;
+  preferredPatterns: string[];
+}
+
 export interface ProjectData {
   id: string;
   name: string;
@@ -191,6 +318,7 @@ export interface ProjectData {
   projectType?: string;
   constraints?: string;
   brainstormingResults?: BrainstormingData;
+  knowledgeBase?: KnowledgeDoc[];
   researchReport?: ResearchReportData;
   architecture?: ArchitectureData;
   schema?: SchemaData;
@@ -199,10 +327,38 @@ export interface ProjectData {
   apiSpec?: ApiSpecification;
   securityContext?: SecurityContext;
   costEstimation?: CostEstimation;
+  devOpsConfig?: DevOpsConfig;
   agentRules?: string;
+  agentRuleConfig?: AgentRuleConfig; // Config for the rules
   actionPlan?: Phase[];
   tasks?: Task[];
   kickoffAssets?: string;
   snapshots?: Snapshot[];
+  chatHistory?: ChatMessage[];
+  comments?: Comment[];
+  collaborators?: Collaborator[];
   lastUpdated: number;
+  // Marketplace Metadata
+  isPublished?: boolean;
+  author?: string;
+  tags?: string[];
+  likes?: number;
+  // Ecosystem
+  activePlugins?: string[]; // IDs of installed plugins
+}
+
+export interface LocalEngineState {
+    status: 'unloaded' | 'loading' | 'ready' | 'error';
+    progress: string;
+    progressPhase: 'init' | 'cache' | 'fetch' | 'load';
+    progressValue: number; // 0-1
+    memoryUsage?: string;
+}
+
+export type SyncStatus = 'connected' | 'disconnected' | 'connecting';
+
+export interface CLIEvent {
+    type: 'tree' | 'file_change' | 'ping';
+    payload: any;
+    timestamp: number;
 }

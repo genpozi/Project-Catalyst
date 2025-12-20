@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ProjectData } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
+import PresentationDeck from './PresentationDeck';
 
 interface SpecDocumentProps {
   projectData: ProjectData;
@@ -9,20 +10,32 @@ interface SpecDocumentProps {
 }
 
 const SpecDocument: React.FC<SpecDocumentProps> = ({ projectData, onContinue }) => {
+  const [isPresenting, setIsPresenting] = useState(false);
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
     <div className="animate-slide-in-up">
+      {isPresenting && (
+          <PresentationDeck projectData={projectData} onClose={() => setIsPresenting(false)} />
+      )}
+
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h2 className="text-2xl sm:text-3xl font-bold text-brand-text">Project Specification Document</h2>
         <div className="flex items-center gap-4">
           <button 
+            onClick={() => setIsPresenting(true)}
+            className="px-6 py-2 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-500 transition-all transform hover:scale-105 flex items-center gap-2"
+          >
+            <span>📺</span> Present Deck
+          </button>
+          <button 
             onClick={handlePrint}
             className="px-6 py-2 bg-slate-600 text-white font-bold rounded-lg shadow-lg hover:bg-slate-500 transition-all transform hover:scale-105"
           >
-            Print / Save as PDF
+            Print / PDF
           </button>
           <button 
             onClick={onContinue}

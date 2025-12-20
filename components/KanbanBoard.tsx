@@ -1,13 +1,18 @@
 
 import React, { useCallback, useState } from 'react';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus, ProjectData } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
+import CodeEditor from './CodeEditor';
 
 interface KanbanBoardProps {
   tasks: Task[];
+  projectData?: ProjectData;
   onUpdateTasks: (updatedTasks: Task[]) => void;
   onGenerateGuide: (taskId: string) => Promise<void>;
   onGenerateChecklist?: (taskId: string) => Promise<void>;
+  onGenerateCode?: (taskId: string) => Promise<void>;
+  onRefineCode?: (taskId: string, feedback: string) => Promise<void>;
+  onCommitFile?: (taskId: string) => void;
   onContinue: () => void;
 }
 
@@ -18,6 +23,81 @@ const getPriorityColor = (p?: string) => {
     case 'low': return 'text-green-400 border-green-500/30 bg-green-500/10';
     default: return 'text-slate-400 border-slate-500/30 bg-slate-500/10';
   }
+};
+
+// --- New Task Modal ---
+const NewTaskModal: React.FC<{
+    status: TaskStatus;
+    onClose: () => void;
+    onSubmit: (task: Partial<Task>) => void;
+}> = ({ status, onClose, onSubmit }) => {
+    const [content, setContent] = useState('');
+    const [role, setRole] = useState('Developer');
+    const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+    const [estimate, setEstimate] = useState('1h');
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
+            <div className="bg-brand-panel border border-glass-border w-full max-w-md rounded-xl shadow-2xl p-6 animate-slide-in-up">
+                <h3 className="text-lg font-bold text-white mb-4">Add Task to {status}</h3>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Task Summary</label>
+                        <input 
+                            value={content}
+                            onChange={(e) => setContent(e.target.value)}
+                            className="w-full glass-input px-3 py-2 rounded-lg"
+                            placeholder="e.g. Implement Auth Middleware"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Role</label>
+                            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full glass-input px-3 py-2 rounded-lg">
+                                <option>Developer</option>
+                                <option>Designer</option>
+                                <option>DevOps</option>
+                                <option>QA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Priority</label>
+                            <select value={priority} onChange={(e) => setPriority(e.target.value as any)} className="w-full glass-input px-3 py-2 rounded-lg">
+                                <option>High</option>
+                                <option>Medium</option>
+                                <option>Low</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Est. Duration</label>
+                        <input 
+                            value={estimate}
+                            onChange={(e) => setEstimate(e.target.value)}
+                            className="w-full glass-input px-3 py-2 rounded-lg"
+                            placeholder="e.g. 2h 30m"
+                        />
+                    </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                    <button onClick={onClose} className="px-4 py-2 text-sm text-glass-text-secondary hover:text-white transition-colors">Cancel</button>
+                    <button 
+                        onClick={() => {
+                            if(content.trim()) {
+                                onSubmit({ content, role, priority, estimatedDuration: estimate, status });
+                                onClose();
+                            }
+                        }}
+                        disabled={!content.trim()}
+                        className="px-4 py-2 bg-brand-primary hover:bg-brand-secondary text-white rounded-lg text-sm font-bold shadow-lg transition-all disabled:opacity-50"
+                    >
+                        Create Task
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const KanbanColumn: React.FC<{
@@ -53,7 +133,8 @@ const KanbanColumn: React.FC<{
         </div>
         <button 
             onClick={() => onAddTask(title)}
-            className="text-glass-text-secondary hover:text-white transition-colors"
+            className="text-glass-text-secondary hover:text-white transition-colors hover:bg-white/5 p-1 rounded"
+            title="Add Task"
         >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
         </button>
@@ -111,15 +192,11 @@ const KanbanColumn: React.FC<{
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
                     Specs
                 </button>
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
-                    className="flex-1 bg-brand-surface hover:bg-brand-secondary/20 hover:text-brand-secondary text-xs py-1 rounded border border-glass-border transition-colors flex items-center justify-center gap-1.5 text-glass-text-secondary"
-                >
-                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                   {task.checklist ? `${task.checklist.filter(c => c.completed).length}/${task.checklist.length}` : 'Log'}
-                </button>
                 {task.implementationGuide && (
-                    <div className="w-2 h-2 rounded-full bg-tech-cyan shadow-[0_0_5px_#06b6d4]"></div>
+                    <div className="w-2 h-2 rounded-full bg-tech-cyan shadow-[0_0_5px_#06b6d4]" title="Guide Generated"></div>
+                )}
+                {task.codeSnippet && (
+                    <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_5px_#c084fc]" title="Code Generated"></div>
                 )}
             </div>
           </div>
@@ -135,10 +212,36 @@ const TaskDetailModal: React.FC<{
     onDelete: (id: string) => void;
     onGenerate: () => void; 
     onGenerateChecklist: () => void;
+    onGenerateCode: () => void;
+    onRefineCode?: (taskId: string, feedback: string) => Promise<void>;
+    onCommitFile?: (taskId: string) => void;
     onToggleChecklist: (id: string) => void;
     isGenerating: boolean;
     isGeneratingChecklist: boolean;
-}> = ({ task, onClose, onDelete, onGenerate, onGenerateChecklist, onToggleChecklist, isGenerating, isGeneratingChecklist }) => {
+    isGeneratingCode: boolean;
+}> = ({ task, onClose, onDelete, onGenerate, onGenerateChecklist, onGenerateCode, onRefineCode, onCommitFile, onToggleChecklist, isGenerating, isGeneratingChecklist, isGeneratingCode }) => {
+    const [activeTab, setActiveTab] = useState<'details' | 'guide' | 'code'>('details');
+    const [copiedCode, setCopiedCode] = useState(false);
+    const [refineCodeInput, setRefineCodeInput] = useState('');
+    const [isRefiningCode, setIsRefiningCode] = useState(false);
+
+    const handleCopyCode = () => {
+        if(task.codeSnippet?.code) {
+            navigator.clipboard.writeText(task.codeSnippet.code);
+            setCopiedCode(true);
+            setTimeout(() => setCopiedCode(false), 2000);
+        }
+    };
+
+    const handleRefineCodeSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!refineCodeInput.trim() || !onRefineCode) return;
+        setIsRefiningCode(true);
+        await onRefineCode(task.id, refineCodeInput);
+        setIsRefiningCode(false);
+        setRefineCodeInput('');
+    };
+
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
             <div className="bg-brand-panel border border-glass-border w-full max-w-5xl max-h-[90vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-slide-in-up">
@@ -147,7 +250,7 @@ const TaskDetailModal: React.FC<{
                 <div className="bg-brand-dark p-6 border-b border-glass-border flex justify-between items-start">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                             <span className="text-xs font-mono text-tech-cyan bg-tech-cyan/10 px-2 py-0.5 rounded border border-tech-cyan/20">TASK-{task.id.split('-')[1]}</span>
+                             <span className="text-xs font-mono text-tech-cyan bg-tech-cyan/10 px-2 py-0.5 rounded border border-tech-cyan/20">TASK-{task.id.split('-')[1] || '00'}</span>
                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${getPriorityColor(task.priority)}`}>
                                 {task.priority} Priority
                             </span>
@@ -161,96 +264,235 @@ const TaskDetailModal: React.FC<{
                     </div>
                 </div>
 
-                <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col lg:flex-row">
-                    {/* Left: Metadata & Checklist */}
-                    <div className="lg:w-[320px] bg-brand-dark/50 border-r border-glass-border flex-shrink-0 p-6 space-y-6">
-                        
-                        {/* Meta Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <span className="text-[10px] uppercase text-glass-text-secondary font-bold tracking-wider">Assignee</span>
-                                <div className="text-sm text-white font-mono mt-1">{task.role}</div>
+                {/* Tabs */}
+                <div className="flex items-center gap-1 bg-brand-dark px-6 border-b border-glass-border">
+                    <button 
+                        onClick={() => setActiveTab('details')}
+                        className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'details' ? 'border-brand-primary text-white' : 'border-transparent text-glass-text-secondary hover:text-white'}`}
+                    >
+                        Details & Checklist
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('guide')}
+                        className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'guide' ? 'border-brand-primary text-white' : 'border-transparent text-glass-text-secondary hover:text-white'}`}
+                    >
+                        Architect's Guide
+                        {task.implementationGuide && <span className="w-1.5 h-1.5 rounded-full bg-tech-cyan"></span>}
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('code')}
+                        className={`px-4 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'code' ? 'border-brand-primary text-white' : 'border-transparent text-glass-text-secondary hover:text-white'}`}
+                    >
+                        Code Forge
+                        {task.codeSnippet && <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>}
+                    </button>
+                </div>
+
+                <div className="flex-grow overflow-y-auto custom-scrollbar p-6 bg-brand-panel">
+                    
+                    {/* DETAILS TAB */}
+                    {activeTab === 'details' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2 space-y-6">
+                                <div>
+                                    <h3 className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider mb-2">Description</h3>
+                                    <p className="text-sm text-slate-300 leading-relaxed bg-brand-dark/50 p-4 rounded-lg border border-glass-border">
+                                        {task.description || "No additional description provided."}
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-xs font-bold text-glass-text uppercase tracking-wider">Sub-Tasks</h3>
+                                        {!task.checklist && (
+                                            <button 
+                                                onClick={onGenerateChecklist}
+                                                disabled={isGeneratingChecklist}
+                                                className="text-[10px] bg-brand-primary/20 text-brand-primary px-2 py-0.5 rounded border border-brand-primary/30 hover:bg-brand-primary/30 transition-colors"
+                                            >
+                                                {isGeneratingChecklist ? 'Generating...' : '+ AI Generate'}
+                                            </button>
+                                        )}
+                                    </div>
+                                    
+                                    {task.checklist ? (
+                                        <div className="space-y-2">
+                                            {task.checklist.map(item => (
+                                                <label key={item.id} className="flex items-start gap-3 p-3 bg-brand-dark/30 border border-glass-border rounded hover:bg-white/5 cursor-pointer transition-colors group">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={item.completed}
+                                                        onChange={() => onToggleChecklist(item.id)}
+                                                        className="mt-0.5 rounded border-glass-border bg-brand-dark text-brand-primary focus:ring-0"
+                                                    />
+                                                    <span className={`text-sm leading-snug ${item.completed ? 'text-glass-text-secondary line-through' : 'text-gray-300'}`}>
+                                                        {item.text}
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 border border-dashed border-glass-border rounded bg-brand-dark/20">
+                                            <span className="text-xs text-glass-text-secondary">No sub-tasks defined.</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                             <div>
-                                <span className="text-[10px] uppercase text-glass-text-secondary font-bold tracking-wider">Phase</span>
-                                <div className="text-sm text-white mt-1">{task.phase}</div>
-                            </div>
-                            <div>
-                                <span className="text-[10px] uppercase text-glass-text-secondary font-bold tracking-wider">Estimate</span>
-                                <div className="text-sm text-white font-mono mt-1">{task.estimatedDuration}</div>
+
+                            <div className="bg-brand-dark/50 p-6 rounded-lg border border-glass-border h-fit">
+                                <h4 className="text-xs font-bold text-glass-text-secondary uppercase tracking-wider mb-4 border-b border-glass-border pb-2">Meta Data</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <span className="text-[10px] uppercase text-glass-text-secondary font-bold tracking-wider">Assignee</span>
+                                        <div className="text-sm text-white font-mono mt-1">{task.role}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] uppercase text-glass-text-secondary font-bold tracking-wider">Phase</span>
+                                        <div className="text-sm text-white mt-1">{task.phase}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] uppercase text-glass-text-secondary font-bold tracking-wider">Estimate</span>
+                                        <div className="text-sm text-white font-mono mt-1">{task.estimatedDuration}</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* Checklist Section */}
+                    {/* GUIDE TAB */}
+                    {activeTab === 'guide' && (
                         <div>
-                             <div className="flex justify-between items-center mb-3">
-                                <h3 className="text-xs font-bold text-glass-text uppercase tracking-wider">Sub-Tasks</h3>
-                                {!task.checklist && (
-                                    <button 
-                                        onClick={onGenerateChecklist}
-                                        disabled={isGeneratingChecklist}
-                                        className="text-[10px] bg-brand-primary/20 text-brand-primary px-2 py-0.5 rounded border border-brand-primary/30 hover:bg-brand-primary/30 transition-colors"
+                             {task.implementationGuide ? (
+                                 <div className="animate-fade-in max-w-3xl mx-auto">
+                                    <div className="flex items-center gap-2 mb-6 pb-4 border-b border-glass-border">
+                                        <span className="text-2xl">⚡</span>
+                                        <div>
+                                            <h3 className="font-bold text-white">Implementation Strategy</h3>
+                                            <p className="text-xs text-glass-text-secondary">AI-generated architectural guidance</p>
+                                        </div>
+                                    </div>
+                                    <div className="prose prose-invert prose-sm max-w-none">
+                                        <MarkdownRenderer content={task.implementationGuide} />
+                                    </div>
+                                 </div>
+                            ) : (
+                                <div className="h-[400px] flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                                        <span className="text-3xl">🪄</span>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-2">Generate Solution</h3>
+                                    <p className="text-sm text-glass-text-secondary max-w-sm mb-6">
+                                        Ask the Architect Agent to generate a step-by-step implementation guide for this specific task.
+                                    </p>
+                                    <button
+                                        onClick={onGenerate}
+                                        disabled={isGenerating}
+                                        className="px-6 py-2 bg-brand-primary text-white text-sm font-bold rounded-md hover:bg-brand-secondary transition-colors shadow-glow"
                                     >
-                                        {isGeneratingChecklist ? 'Generating...' : '+ AI Generate'}
+                                        {isGenerating ? 'Architecting...' : 'Initialize Guide Agent'}
                                     </button>
-                                )}
-                             </div>
-                             
-                             {task.checklist ? (
-                                <div className="space-y-2">
-                                    {task.checklist.map(item => (
-                                        <label key={item.id} className="flex items-start gap-3 p-2 rounded hover:bg-white/5 cursor-pointer transition-colors group">
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* CODE TAB */}
+                    {activeTab === 'code' && (
+                        <div className="h-full flex flex-col">
+                             {task.codeSnippet ? (
+                                <div className="flex flex-col h-full animate-fade-in">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h3 className="font-bold text-white">{task.codeSnippet.filename}</h3>
+                                            <p className="text-xs text-glass-text-secondary">{task.codeSnippet.description}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={onGenerateCode}
+                                                disabled={isGeneratingCode}
+                                                className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-white transition-colors"
+                                            >
+                                                {isGeneratingCode ? 'Regenerating...' : 'Regenerate'}
+                                            </button>
+                                            <button 
+                                                onClick={handleCopyCode}
+                                                className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-white transition-colors font-bold"
+                                            >
+                                                {copiedCode ? 'Copied!' : 'Copy Code'}
+                                            </button>
+                                            {onCommitFile && (
+                                                <button
+                                                    onClick={() => onCommitFile(task.id)}
+                                                    className="text-xs bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded text-white transition-colors font-bold flex items-center gap-1 shadow-lg"
+                                                    title="Save this code to your project file structure"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                                    Commit to Codebase
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-grow bg-[#0f172a] rounded-lg border border-glass-border overflow-hidden relative mb-4">
+                                        <div className="absolute top-0 right-0 px-2 py-1 bg-black/50 text-[10px] text-glass-text-secondary font-mono rounded-bl-lg z-10">
+                                            {task.codeSnippet.language}
+                                        </div>
+                                        <CodeEditor 
+                                            value={task.codeSnippet.code}
+                                            readOnly={true}
+                                            language={task.codeSnippet.language}
+                                        />
+                                    </div>
+                                    
+                                    {/* Code Refinement */}
+                                    <div className="mt-auto">
+                                        <form onSubmit={handleRefineCodeSubmit} className="relative flex gap-2">
                                             <input 
-                                                type="checkbox" 
-                                                checked={item.completed}
-                                                onChange={() => onToggleChecklist(item.id)}
-                                                className="mt-0.5 rounded border-glass-border bg-brand-dark text-brand-primary focus:ring-0"
+                                                type="text"
+                                                value={refineCodeInput}
+                                                onChange={(e) => setRefineCodeInput(e.target.value)}
+                                                placeholder="Ask to refactor or change the code... (e.g. 'Use async/await', 'Add comments')"
+                                                className="flex-grow glass-input rounded-lg px-4 py-3 text-sm focus:ring-brand-primary focus:border-brand-primary"
                                             />
-                                            <span className={`text-sm leading-snug ${item.completed ? 'text-glass-text-secondary line-through' : 'text-gray-300'}`}>
-                                                {item.text}
-                                            </span>
-                                        </label>
-                                    ))}
+                                            <button 
+                                                type="submit"
+                                                disabled={!refineCodeInput.trim() || isRefiningCode}
+                                                className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 rounded-lg disabled:opacity-50 transition-colors"
+                                            >
+                                                {isRefiningCode ? 'Refining...' : 'Refine'}
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                              ) : (
-                                <div className="text-center py-6 border border-dashed border-glass-border rounded">
-                                    <span className="text-xs text-glass-text-secondary">No sub-tasks defined.</span>
+                                <div className="h-[400px] flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-brand-accent/20">
+                                        <span className="text-3xl">🔥</span>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white mb-2">The Code Forge</h3>
+                                    <p className="text-sm text-glass-text-secondary max-w-sm mb-6">
+                                        Generate production-ready code for this task using your project's stack, design system, and file structure context.
+                                    </p>
+                                    <button
+                                        onClick={onGenerateCode}
+                                        disabled={isGeneratingCode}
+                                        className="px-6 py-2 bg-gradient-to-r from-brand-secondary to-brand-accent text-white text-sm font-bold rounded-md hover:scale-105 transition-all shadow-glow flex items-center gap-2"
+                                    >
+                                        {isGeneratingCode ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                <span>Forging Code...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                                                <span>Generate Code Artifact</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                              )}
                         </div>
-                    </div>
-
-                    {/* Right: Implementation Guide */}
-                    <div className="flex-grow p-8 bg-brand-panel">
-                        {task.implementationGuide ? (
-                             <div className="animate-fade-in">
-                                <div className="flex items-center gap-2 mb-4 pb-4 border-b border-glass-border">
-                                    <span className="text-xl">⚡</span>
-                                    <h3 className="font-bold text-white">Architectural Guide</h3>
-                                </div>
-                                <div className="prose prose-invert prose-sm max-w-none">
-                                    <MarkdownRenderer content={task.implementationGuide} />
-                                </div>
-                             </div>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
-                                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                                    <span className="text-2xl">🪄</span>
-                                </div>
-                                <h3 className="text-lg font-bold text-white mb-2">Generate Solution</h3>
-                                <p className="text-sm text-glass-text-secondary max-w-sm mb-6">
-                                    Ask the Architect Agent to generate a step-by-step implementation guide for this specific task.
-                                </p>
-                                <button
-                                    onClick={onGenerate}
-                                    disabled={isGenerating}
-                                    className="px-6 py-2 bg-brand-primary text-white text-sm font-bold rounded-md hover:bg-brand-secondary transition-colors shadow-glow"
-                                >
-                                    {isGenerating ? 'Architecting...' : 'Initialize Guide Agent'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </div>
 
                 {/* Footer Actions */}
@@ -271,10 +513,14 @@ const TaskDetailModal: React.FC<{
     );
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTasks, onGenerateGuide, onGenerateChecklist, onContinue }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateTasks, onGenerateGuide, onGenerateChecklist, onGenerateCode, onRefineCode, onCommitFile, onContinue }) => {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingChecklist, setIsGeneratingChecklist] = useState(false);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  
+  // New State for Modal
+  const [addingTaskStatus, setAddingTaskStatus] = useState<TaskStatus | null>(null);
 
   // Drag and Drop Logic
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, task: Task) => {
@@ -308,6 +554,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTasks, onGener
     setIsGeneratingChecklist(false);
   };
 
+  const handleGenCode = async () => {
+    if (!activeTask || !onGenerateCode) return;
+    setIsGeneratingCode(true);
+    await onGenerateCode(activeTask.id);
+    setIsGeneratingCode(false);
+  };
+
   const handleToggleItem = (itemId: string) => {
     if (!activeTask) return;
     const updatedTasks = tasks.map(t => {
@@ -322,15 +575,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTasks, onGener
     onUpdateTasks(updatedTasks);
   };
 
-  const handleAddTask = (status: TaskStatus) => {
+  const handleAddTaskSubmit = (task: Partial<Task>) => {
     const newTask: Task = {
         id: `manual-${Date.now()}`,
-        content: 'New Implementation Task',
-        description: 'Describe the task...',
-        status: status,
-        priority: 'Medium',
-        estimatedDuration: '1h',
-        role: 'Developer',
+        content: task.content || 'New Task',
+        description: 'Manual task added via Kanban.',
+        status: task.status || TaskStatus.TODO,
+        priority: task.priority || 'Medium',
+        estimatedDuration: task.estimatedDuration || '1h',
+        role: task.role || 'Developer',
         phase: 'Execution'
     };
     onUpdateTasks([...tasks, newTask]);
@@ -374,9 +627,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTasks, onGener
             onDelete={handleDeleteTask}
             onGenerate={handleGenerate}
             onGenerateChecklist={handleGenChecklist}
+            onGenerateCode={handleGenCode}
+            onRefineCode={onRefineCode}
+            onCommitFile={onCommitFile}
             onToggleChecklist={handleToggleItem}
             isGenerating={isGenerating}
             isGeneratingChecklist={isGeneratingChecklist}
+            isGeneratingCode={isGeneratingCode}
+          />
+      )}
+
+      {addingTaskStatus && (
+          <NewTaskModal 
+            status={addingTaskStatus} 
+            onClose={() => setAddingTaskStatus(null)} 
+            onSubmit={handleAddTaskSubmit}
           />
       )}
 
@@ -407,7 +672,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTasks, onGener
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             onTaskClick={setActiveTask}
-            onAddTask={handleAddTask}
+            onAddTask={() => setAddingTaskStatus(status)}
           />
         ))}
       </div>

@@ -5,6 +5,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0e14" />
+    <meta name="description" content="0relai (Zero Reliance) is an advanced architectural engine that leverages AI to guide users from abstract ideas to fully specified, production-ready technical blueprints." />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/vite.svg">
     <title>0relai</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
@@ -125,9 +129,19 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
-    "jszip": "https://esm.run/jszip"
+    "jszip": "https://esm.run/jszip",
+    "@mlc-ai/web-llm": "https://esm.run/@mlc-ai/web-llm"
   }
 }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered: ', reg))
+        .catch(err => console.log('SW registration failed: ', err));
+    });
+  }
 </script>
 </head>
   <body>
