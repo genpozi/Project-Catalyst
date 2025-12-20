@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useMemo } from 'react';
-import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus, ActivityItem, ProjectTemplate, PresenceUser, UserProfile, SubscriptionTier } from './types';
+import { ProjectData, AppPhase, Task, Snapshot, Comment, Collaborator, KnowledgeDoc, LocalEngineState, SyncStatus, ActivityItem, ProjectTemplate, PresenceUser, UserProfile, SubscriptionTier, Organization, OrganizationMember, AuditLogEntry } from './types';
 import { db } from './utils/db';
 import { cliSync } from './utils/CLISyncService';
 import { cloudStorage } from './utils/cloudStorage';
@@ -10,7 +10,8 @@ interface UIState {
     selectedFilePath?: string;
     selectedDocId?: string;
     selectedNodeId?: string;
-    showUpgradeModal?: boolean; // New UI state for modal triggering
+    showUpgradeModal?: boolean;
+    showOrgModal?: boolean;
 }
 
 interface ProjectState {
@@ -26,10 +27,13 @@ interface ProjectState {
   syncStatus: SyncStatus;
   recentActivities: ActivityItem[];
   ui: UIState;
-  user: any | null; // Supabase user
-  userProfile: UserProfile | null; // Extended user profile with billing info
-  collaborators: Collaborator[]; // Global list of known users
-  onlineUsers: PresenceUser[]; // Real-time users
+  user: any | null; 
+  userProfile: UserProfile | null;
+  collaborators: Collaborator[];
+  onlineUsers: PresenceUser[];
+  // Organization State
+  organizations: Organization[];
+  currentOrg: Organization | null;
 }
 
 type ProjectAction =
@@ -62,17 +66,24 @@ type ProjectAction =
   | { type: 'SET_SELECTED_DOC'; payload: string | undefined }
   | { type: 'SET_SELECTED_NODE'; payload: string | undefined }
   | { type: 'TRIGGER_UPGRADE_MODAL'; payload: boolean }
+  | { type: 'TRIGGER_ORG_MODAL'; payload: boolean }
   | { type: 'ADD_ACTIVITY'; payload: ActivityItem }
   | { type: 'SET_USER'; payload: any | null }
   | { type: 'SET_USER_PROFILE'; payload: UserProfile }
   | { type: 'UPGRADE_TIER'; payload: SubscriptionTier }
-  | { type: 'SET_ONLINE_USERS'; payload: PresenceUser[] };
+  | { type: 'SET_ONLINE_USERS'; payload: PresenceUser[] }
+  | { type: 'CREATE_ORG'; payload: string }
+  | { type: 'SWITCH_ORG'; payload: string }
+  | { type: 'ADD_ORG_MEMBER'; payload: { email: string, role: OrganizationMember['role'] } }
+  | { type: 'UPDATE_ORG_MEMBER'; payload: { userId: string, role: OrganizationMember['role'] } }
+  | { type: 'REMOVE_ORG_MEMBER'; payload: string };
 
 const SAVED_STATE_KEY = '0relai-project-state-v2';
 const MARKETPLACE_KEY = '0relai-marketplace';
 const TEMPLATES_KEY = '0relai-templates';
 const ACTIVITY_KEY = '0relai-activities';
-const USER_PROFILE_KEY = '0relai-user-profile'; // Local storage simulation key
+const USER_PROFILE_KEY = '0relai-user-profile';
+const ORGS_KEY = '0relai-organizations';
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
@@ -118,19 +129,39 @@ const initialState: ProjectState = {
   user: null,
   userProfile: null,
   collaborators: [],
-  onlineUsers: []
+  onlineUsers: [],
+  organizations: [],
+  currentOrg: null
 };
 
 // Check if user can create a project based on their tier
 const canCreateProject = (profile: UserProfile | null, currentProjects: number) => {
-    if (!profile) return true; // Assume free if not loaded, but limit enforced later
+    if (!profile) return true; 
     if (profile.tier === 'Free' && currentProjects >= profile.projectsLimit) return false;
     return true;
 };
 
+// Helper to create audit logs
+const createAuditLog = (
+    actorId: string, 
+    actorName: string, 
+    action: string, 
+    target: string, 
+    severity: AuditLogEntry['severity'] = 'info'
+): AuditLogEntry => ({
+    id: generateId(),
+    actorId,
+    actorName,
+    action,
+    target,
+    timestamp: Date.now(),
+    severity
+});
+
 const projectReducer = (state: ProjectState, action: ProjectAction): ProjectState => {
   let newState = { ...state };
   let newActivity: ActivityItem | null = null;
+  let auditLog: AuditLogEntry | null = null;
 
   switch (action.type) {
     case 'SET_PHASE':
@@ -162,7 +193,6 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
       newState.projectData = updatedData;
       newState.unlockedPhases = Array.from(new Set(unlocked));
       
-      // Auto-log updates if significant
       if (action.payload.architecture) newActivity = { id: generateId(), type: 'update', message: `Updated Architecture`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
       break;
     case 'SET_LOADING':
@@ -173,29 +203,31 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
       break;
     case 'RESET_PROJECT':
       if (state.userProfile && !canCreateProject(state.userProfile, state.projectsList.length)) {
-          // Trigger Upgrade Modal
           newState.ui.showUpgradeModal = true;
       } else {
           const newProj = createNewProject();
+          newProj.organizationId = state.currentOrg?.id; 
           newState.projectData = newProj;
           newState.currentPhase = AppPhase.IDEA;
           newState.unlockedPhases = [AppPhase.IDEA];
           newState.ui = {};
           newActivity = { id: generateId(), type: 'create', message: `Started new project`, timestamp: Date.now(), projectId: newProj.id, projectName: newProj.name };
           
-          // Increment usage simulation
           if (newState.userProfile) {
               newState.userProfile = { ...newState.userProfile, projectsUsed: newState.userProfile.projectsUsed + 1 };
               localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+          }
+          
+          if (state.currentOrg) {
+              auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Created Project', newProj.name);
           }
       }
       break;
     case 'LOAD_PROJECT':
       newState.projectData = action.payload;
       newState.currentPhase = AppPhase.IDEA;
-      newState.unlockedPhases = [AppPhase.IDEA]; // Re-calced on next update or could be stored
+      newState.unlockedPhases = [AppPhase.IDEA]; 
       newState.ui = {};
-      // newActivity = { id: generateId(), type: 'system', message: `Loaded project`, timestamp: Date.now(), projectId: action.payload.id, projectName: action.payload.name };
       break;
     case 'DELETE_PROJECT':
       newState.projectsList = state.projectsList.filter(p => p.id !== action.payload);
@@ -204,6 +236,10 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
           localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
       }
       newActivity = { id: generateId(), type: 'system', message: `Deleted project`, timestamp: Date.now() };
+      
+      if (state.currentOrg) {
+          auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Deleted Project', action.payload, 'warning');
+      }
       break;
     case 'UNLOCK_PHASE':
       newState.unlockedPhases = Array.from(new Set([...state.unlockedPhases, action.payload]));
@@ -239,6 +275,10 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
           collaborators: state.projectData.collaborators
       };
       newActivity = { id: generateId(), type: 'snapshot', message: `Restored snapshot: ${snapshotToRestore.name}`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
+      
+      if (state.currentOrg) {
+          auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Restored Snapshot', snapshotToRestore.name, 'warning');
+      }
       break;
     }
     case 'DELETE_SNAPSHOT': {
@@ -286,6 +326,10 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
         newState.projectData = { ...state.projectData, isPublished: true };
         newState.marketplace = newMarketplace;
         newActivity = { id: generateId(), type: 'publish', message: `Published blueprint`, timestamp: Date.now(), projectId: state.projectData.id, projectName: state.projectData.name };
+        
+        if (state.currentOrg) {
+            auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Published Project', state.projectData.name, 'info');
+        }
         break;
     }
     case 'LIKE_PROJECT': {
@@ -312,7 +356,8 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
             lastUpdated: Date.now(),
             collaborators: [
                 { id: 'me', name: 'You', email: 'you@example.com', role: 'Owner', avatar: '😎', status: 'active' }
-            ]
+            ],
+            organizationId: state.currentOrg?.id
         };
         newState.projectData = newProject;
         newState.currentPhase = AppPhase.IDEA;
@@ -323,11 +368,14 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
             newState.userProfile = { ...newState.userProfile, projectsUsed: newState.userProfile.projectsUsed + 1 };
             localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
         }
+        
+        if (state.currentOrg) {
+            auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Forked Project', action.payload.name);
+        }
         break;
     }
     case 'SAVE_TEMPLATE': {
         const { name, description, icon } = action.payload;
-        // Clean project data for template (remove IDs, comments, history)
         const templateData = { ...state.projectData };
         delete (templateData as any).id;
         delete templateData.chatHistory;
@@ -400,6 +448,9 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
     case 'TRIGGER_UPGRADE_MODAL':
         newState.ui = { ...state.ui, showUpgradeModal: action.payload };
         break;
+    case 'TRIGGER_ORG_MODAL':
+        newState.ui = { ...state.ui, showOrgModal: action.payload };
+        break;
     case 'ADD_ACTIVITY':
         newActivity = action.payload;
         break;
@@ -414,7 +465,7 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
             newState.userProfile = { 
                 ...newState.userProfile, 
                 tier: action.payload,
-                projectsLimit: action.payload === 'Free' ? 1 : -1, // Unlimited for paid
+                projectsLimit: action.payload === 'Free' ? 1 : -1, 
                 aiTokensLimit: action.payload === 'Free' ? 1000 : -1
             };
             localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
@@ -424,15 +475,109 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
     case 'SET_ONLINE_USERS':
         newState.onlineUsers = action.payload;
         break;
+    case 'CREATE_ORG': {
+        const newOrg: Organization = {
+            id: generateId(),
+            name: action.payload,
+            ownerId: state.user?.id || 'anon',
+            createdAt: Date.now(),
+            members: [{
+                userId: state.user?.id || 'anon',
+                email: state.user?.email || 'anon@example.com',
+                role: 'Owner',
+                status: 'active',
+                joinedAt: Date.now(),
+                avatar: state.user?.user_metadata?.avatar_url || '👤'
+            }],
+            auditLogs: [] // Init empty logs
+        };
+        const updatedOrgs = [...state.organizations, newOrg];
+        newState.organizations = updatedOrgs;
+        newState.currentOrg = newOrg;
+        localStorage.setItem(ORGS_KEY, JSON.stringify(updatedOrgs));
+        if (newState.userProfile) {
+            newState.userProfile = { ...newState.userProfile, activeOrgId: newOrg.id };
+            localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+        }
+        newActivity = { id: generateId(), type: 'team', message: `Created Organization: ${newOrg.name}`, timestamp: Date.now() };
+        break;
+    }
+    case 'SWITCH_ORG': {
+        const org = state.organizations.find(o => o.id === action.payload);
+        if (org) {
+            newState.currentOrg = org;
+            if (newState.userProfile) {
+                newState.userProfile = { ...newState.userProfile, activeOrgId: org.id };
+                localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(newState.userProfile));
+            }
+            newActivity = { id: generateId(), type: 'team', message: `Switched to ${org.name}`, timestamp: Date.now() };
+        }
+        break;
+    }
+    case 'ADD_ORG_MEMBER': {
+        if (!state.currentOrg) return state;
+        const newMember: OrganizationMember = {
+            userId: generateId(), 
+            email: action.payload.email,
+            role: action.payload.role,
+            status: 'pending',
+            joinedAt: Date.now(),
+            avatar: '⏳'
+        };
+        const updatedOrg = { ...state.currentOrg, members: [...state.currentOrg.members, newMember] };
+        newState.currentOrg = updatedOrg;
+        newState.organizations = state.organizations.map(o => o.id === updatedOrg.id ? updatedOrg : o);
+        localStorage.setItem(ORGS_KEY, JSON.stringify(newState.organizations));
+        newActivity = { id: generateId(), type: 'team', message: `Invited ${action.payload.email}`, timestamp: Date.now() };
+        
+        auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Invited Member', action.payload.email);
+        break;
+    }
+    case 'UPDATE_ORG_MEMBER': {
+        if (!state.currentOrg) return state;
+        const updatedMembers = state.currentOrg.members.map(m => 
+            m.userId === action.payload.userId ? { ...m, role: action.payload.role } : m
+        );
+        const updatedOrg = { ...state.currentOrg, members: updatedMembers };
+        newState.currentOrg = updatedOrg;
+        newState.organizations = state.organizations.map(o => o.id === updatedOrg.id ? updatedOrg : o);
+        localStorage.setItem(ORGS_KEY, JSON.stringify(newState.organizations));
+        
+        const targetMember = state.currentOrg.members.find(m => m.userId === action.payload.userId);
+        auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Updated Member Role', `${targetMember?.email} -> ${action.payload.role}`);
+        break;
+    }
+    case 'REMOVE_ORG_MEMBER': {
+        if (!state.currentOrg) return state;
+        const targetMember = state.currentOrg.members.find(m => m.userId === action.payload);
+        const updatedMembers = state.currentOrg.members.filter(m => m.userId !== action.payload);
+        const updatedOrg = { ...state.currentOrg, members: updatedMembers };
+        newState.currentOrg = updatedOrg;
+        newState.organizations = state.organizations.map(o => o.id === updatedOrg.id ? updatedOrg : o);
+        localStorage.setItem(ORGS_KEY, JSON.stringify(newState.organizations));
+        newActivity = { id: generateId(), type: 'team', message: `Removed member`, timestamp: Date.now() };
+        
+        auditLog = createAuditLog(state.user?.id || 'anon', state.user?.email || 'Anonymous', 'Removed Member', targetMember?.email || 'Unknown User', 'warning');
+        break;
+    }
     default:
       return state;
   }
 
-  // Activity Log Update
+  // Handle Side Effects
   if (newActivity) {
-      const updatedActivities = [newActivity, ...state.recentActivities].slice(0, 50); // Keep last 50
+      const updatedActivities = [newActivity, ...state.recentActivities].slice(0, 50); 
       newState.recentActivities = updatedActivities;
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(updatedActivities));
+  }
+
+  if (auditLog && newState.currentOrg) {
+      // Append log to current organization
+      const updatedLogs = [auditLog, ...(newState.currentOrg.auditLogs || [])].slice(0, 100); // Keep last 100
+      const updatedOrg = { ...newState.currentOrg, auditLogs: updatedLogs };
+      newState.currentOrg = updatedOrg;
+      newState.organizations = newState.organizations.map(o => o.id === updatedOrg.id ? updatedOrg : o);
+      localStorage.setItem(ORGS_KEY, JSON.stringify(newState.organizations));
   }
 
   return newState;
@@ -441,50 +586,56 @@ const projectReducer = (state: ProjectState, action: ProjectAction): ProjectStat
 const ProjectContext = createContext<{
   state: ProjectState;
   dispatch: React.Dispatch<ProjectAction>;
+  currentRole: OrganizationMember['role'];
 } | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(projectReducer, initialState);
 
-  // Initialize DB and Listeners
   useEffect(() => {
     const init = async () => {
         try {
             await db.init();
             
-            // CLI Bridge Listener
             cliSync.subscribeStatus((status) => {
                 dispatch({ type: 'SET_SYNC_STATUS', payload: status });
             });
 
-            // Check for logged in user
             const user = await getCurrentUser();
             dispatch({ type: 'SET_USER', payload: user });
 
-            // Restore User Profile (Simulated DB)
             const savedProfile = localStorage.getItem(USER_PROFILE_KEY);
             if (savedProfile) {
                 dispatch({ type: 'SET_USER_PROFILE', payload: JSON.parse(savedProfile) });
             } else {
-                // Initialize default profile
                 const defaultProfile: UserProfile = {
                     id: user?.id || 'anon',
                     email: user?.email || 'anon@user.com',
                     tier: 'Free',
                     projectsUsed: 0,
-                    projectsLimit: 1, // Strict limit for demo
+                    projectsLimit: 1,
                     aiTokensUsed: 0,
                     aiTokensLimit: 1000
                 };
                 dispatch({ type: 'SET_USER_PROFILE', payload: defaultProfile });
-                localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(defaultProfile));
             }
 
-            // Listen for auth state changes
+            const savedOrgs = localStorage.getItem(ORGS_KEY);
+            if (savedOrgs) {
+                const orgs = JSON.parse(savedOrgs);
+                // Ensure legacy orgs have auditLogs array
+                const migratedOrgs = orgs.map((o: Organization) => ({...o, auditLogs: o.auditLogs || []}));
+                state.organizations = migratedOrgs;
+                
+                const profile = savedProfile ? JSON.parse(savedProfile) : null;
+                const active = migratedOrgs.find((o: Organization) => o.id === profile?.activeOrgId) || migratedOrgs[0];
+                if (active) dispatch({ type: 'SWITCH_ORG', payload: active.id });
+            } else {
+                dispatch({ type: 'CREATE_ORG', payload: 'Personal Workspace' });
+            }
+
             supabase.auth.onAuthStateChange(async (event, session) => {
                 dispatch({ type: 'SET_USER', payload: session?.user || null });
-                
-                // Refresh project list whenever auth state changes
                 const updatedList = await cloudStorage.listProjects();
                 dispatch({ type: 'SYNC_PROJECTS_LIST', payload: updatedList });
             });
@@ -493,27 +644,12 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
             const templates = JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '[]');
             const activities = JSON.parse(localStorage.getItem(ACTIVITY_KEY) || '[]');
             
-            // Restore activities to state
             activities.forEach((a: ActivityItem) => dispatch({ type: 'ADD_ACTIVITY', payload: a }));
-            
-            // Initial state population for non-db things
             state.marketplace = marketplace;
             state.customTemplates = templates;
 
-            // Load Projects from Cloud/Local via Storage Service
             const projectsList = await cloudStorage.listProjects();
             dispatch({ type: 'SYNC_PROJECTS_LIST', payload: projectsList });
-
-            // Sync project count to profile
-            if (state.userProfile) {
-                const count = projectsList.length;
-                if (count !== state.userProfile.projectsUsed) {
-                    dispatch({ 
-                        type: 'SET_USER_PROFILE', 
-                        payload: { ...state.userProfile, projectsUsed: count } 
-                    });
-                }
-            }
 
             const savedStateStr = localStorage.getItem(SAVED_STATE_KEY);
             if (savedStateStr) {
@@ -534,28 +670,16 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     init();
   }, []);
 
-  // Presence Tracking Effect
   useEffect(() => {
-      // Use 'global' room for simple presence or project-specific if we had a cloud ID
-      // For now, we broadcast to a global 'lobby' for demo purposes, 
-      // or a specific room if project is cloud-synced.
       const roomId = state.projectData.id?.startsWith('pub-') ? 'lobby' : `room_${state.projectData.id}`;
-      
       const channel = supabase.channel(roomId);
-      
       channel
         .on('presence', { event: 'sync' }, () => {
             const newState = channel.presenceState();
-            // Transform presence state object to array
             const users: PresenceUser[] = [];
             Object.values(newState).forEach((presences: any) => {
                 presences.forEach((p: any) => {
-                    users.push({
-                        id: p.user_id,
-                        name: p.name,
-                        color: p.color,
-                        onlineAt: p.online_at
-                    });
+                    users.push({ id: p.user_id, name: p.name, color: p.color, onlineAt: p.online_at });
                 });
             });
             dispatch({ type: 'SET_ONLINE_USERS', payload: users });
@@ -571,13 +695,9 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
                 });
             }
         });
+      return () => { supabase.removeChannel(channel); };
+  }, [state.projectData.id, state.user]);
 
-      return () => {
-          supabase.removeChannel(channel);
-      };
-  }, [state.projectData.id, state.user]); // Re-subscribe if project or user changes
-
-  // Save changes to DB (and Cloud if enabled)
   useEffect(() => {
     localStorage.setItem(SAVED_STATE_KEY, JSON.stringify({
       currentPhase: state.currentPhase,
@@ -588,20 +708,21 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     const saveToStorage = async () => {
         if (state.projectData.id && !state.projectData.id.startsWith('pub-')) {
             await cloudStorage.saveProject(state.projectData);
-            // Refresh list to show updated timestamps or new cloud icons
             const list = await cloudStorage.listProjects();
             dispatch({ type: 'SYNC_PROJECTS_LIST', payload: list });
         }
     };
-    
-    // Auto-save debounce
     const timeout = setTimeout(saveToStorage, 2000); 
     return () => clearTimeout(timeout);
-
   }, [state.projectData, state.currentPhase, state.unlockedPhases]);
 
-  // Performance Optimization: Memoize the context value
-  const contextValue = useMemo(() => ({ state, dispatch }), [state]);
+  const currentRole = useMemo(() => {
+      if (!state.currentOrg || !state.user) return 'Owner'; // Default to Owner for anon/local
+      const member = state.currentOrg.members.find(m => m.userId === state.user.id);
+      return member?.role || 'Viewer'; // Default safe fallback
+  }, [state.currentOrg, state.user]);
+
+  const contextValue = useMemo(() => ({ state, dispatch, currentRole }), [state, currentRole]);
 
   return (
     <ProjectContext.Provider value={contextValue}>

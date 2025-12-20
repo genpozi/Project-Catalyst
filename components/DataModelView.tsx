@@ -11,9 +11,10 @@ interface DataModelViewProps {
   hideActions?: boolean;
   onRefine?: (prompt: string) => Promise<void>;
   isRefining?: boolean;
+  readOnly?: boolean;
 }
 
-const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinue, hideActions, onRefine, isRefining = false }) => {
+const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinue, hideActions, onRefine, isRefining = false, readOnly = false }) => {
   const [activeTab, setActiveTab] = useState<'visual' | 'diagram' | 'tables' | 'prisma' | 'sql'>('visual');
 
   useEffect(() => {
@@ -55,7 +56,7 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinu
           </>
       )}
 
-      {onRefine && !hideActions && (
+      {onRefine && !hideActions && !readOnly && (
         <div className="max-w-3xl mx-auto mb-8 w-full">
             <RefineBar 
                 onRefine={onRefine} 
@@ -94,7 +95,7 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinu
         
         {/* Visual Builder */}
         {activeTab === 'visual' && (
-            <VisualERD schema={data} onUpdate={handleUpdate} />
+            <VisualERD schema={data} onUpdate={handleUpdate} readOnly={readOnly} />
         )}
 
         {/* Mermaid Diagram */}
@@ -107,7 +108,7 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinu
                  onClick={handleOpenMermaidLive}
                  className="absolute top-0 right-0 bg-slate-700 hover:bg-brand-primary text-white text-xs px-3 py-2 rounded shadow flex items-center gap-2 transition-colors"
                >
-                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                  Edit in Mermaid Live
                </button>
             </div>
@@ -163,7 +164,7 @@ const DataModelView: React.FC<DataModelViewProps> = ({ data, onUpdate, onContinu
         )}
       </div>
 
-      {!hideActions && (
+      {!hideActions && !readOnly && (
         <div className="text-center mt-8">
             <button
             onClick={onContinue}

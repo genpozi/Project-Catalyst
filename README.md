@@ -19,6 +19,12 @@
 - **Visual Editors:** Interactive builders for Tech Stack, Database Schema, and Gantt Charts.
 - **Export Studio:** Download high-resolution PNGs of your diagrams for reports.
 
+### 🛡️ Security & Enterprise
+- **Compliance Engine:** Generate audit-ready checklists for SOC2, HIPAA, and GDPR based on your specific architecture.
+- **RBAC Matrix:** Visually define roles and permissions.
+- **Threat Modeling:** Simulate rate-limiting and security header configurations before deployment.
+- **Audit Logs:** Track critical team actions and project changes.
+
 ### 🚀 The Workflow
 1.  **Command Center:** A unified dashboard to track multiple projects, view recent activity, and resume work instantly.
 2.  **Multi-Modal Intake:** Voice, Text, and Image analysis for project initiation.

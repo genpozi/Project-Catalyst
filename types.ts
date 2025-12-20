@@ -35,11 +35,40 @@ export interface UserProfile {
     projectsLimit: number;
     aiTokensUsed: number;
     aiTokensLimit: number; // -1 for unlimited
+    activeOrgId?: string;
+}
+
+export interface OrganizationMember {
+    userId: string;
+    email: string;
+    role: 'Owner' | 'Admin' | 'Member' | 'Viewer';
+    avatar?: string;
+    joinedAt: number;
+    status: 'active' | 'pending';
+}
+
+export interface AuditLogEntry {
+    id: string;
+    actorId: string;
+    actorName: string;
+    action: string;
+    target: string;
+    timestamp: number;
+    severity: 'info' | 'warning' | 'critical';
+}
+
+export interface Organization {
+    id: string;
+    name: string;
+    ownerId: string;
+    members: OrganizationMember[];
+    auditLogs: AuditLogEntry[];
+    createdAt: number;
 }
 
 export interface ActivityItem {
   id: string;
-  type: 'create' | 'update' | 'snapshot' | 'publish' | 'system' | 'billing';
+  type: 'create' | 'update' | 'snapshot' | 'publish' | 'system' | 'billing' | 'team';
   message: string;
   timestamp: number;
   projectId?: string;
@@ -230,11 +259,27 @@ export interface RBACMatrix {
   }[];
 }
 
+export interface SecurityHeader {
+    name: string;
+    value: string;
+    status: 'compliant' | 'warning' | 'missing';
+    description: string;
+}
+
+export interface RateLimitConfig {
+    strategy: 'fixed-window' | 'token-bucket' | 'leaky-bucket';
+    limit: number;
+    windowInSeconds: number;
+    provider: 'redis' | 'cloudflare' | 'nginx' | 'middleware';
+}
+
 export interface SecurityContext {
   policies: SecurityPolicy[];
   testingStrategy: TestRequirement[];
   complianceChecklist: ComplianceItem[];
   rbacMatrix?: RBACMatrix;
+  securityHeaders?: SecurityHeader[];
+  rateLimitConfig?: RateLimitConfig;
 }
 
 export interface CostEstimation {
@@ -392,6 +437,7 @@ export interface ProjectData {
   likes?: number;
   activePlugins?: string[];
   githubConfig?: GitHubConfig;
+  organizationId?: string; // New: Link to Organization
 }
 
 export interface LocalEngineState {

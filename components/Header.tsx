@@ -7,6 +7,7 @@ import PluginStore from './PluginStore';
 import SettingsModal from './SettingsModal';
 import AuthModal from './AuthModal';
 import ImportRepoModal from './ImportRepoModal';
+import OrganizationModal from './OrganizationModal';
 import { useToast } from './Toast';
 import { signOut } from '../utils/supabaseClient';
 import PresenceAvatars from './PresenceAvatars';
@@ -27,10 +28,12 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
   const [showSettings, setShowSettings] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showOrgSwitcher, setShowOrgSwitcher] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isAuthenticated = !!state.user;
+  const currentOrg = state.currentOrg;
 
   const handleLoadProject = (id: string) => {
     const fullData = localStorage.getItem(`0relai-proj-${id}`);
@@ -123,6 +126,20 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
       addToast("Logged out", "info");
   };
 
+  const handleCreateOrg = () => {
+      const name = prompt("Organization Name:");
+      if (name) {
+          dispatch({ type: 'CREATE_ORG', payload: name });
+          addToast(`Organization ${name} created`, "success");
+          setShowOrgSwitcher(false);
+      }
+  };
+
+  const handleSwitchOrg = (id: string) => {
+      dispatch({ type: 'SWITCH_ORG', payload: id });
+      setShowOrgSwitcher(false);
+  };
+
   return (
     <header className="h-14 flex justify-between items-center px-4 bg-[#0b0e14] border-b border-glass-border z-50 flex-shrink-0">
       {showShare && (
@@ -149,6 +166,10 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
           <ImportRepoModal onClose={() => setShowImport(false)} />
       )}
 
+      {state.ui.showOrgModal && (
+          <OrganizationModal onClose={() => dispatch({ type: 'TRIGGER_ORG_MODAL', payload: false })} />
+      )}
+
       <div className="flex items-center gap-4">
         {/* Mobile Menu Toggle */}
         <button 
@@ -159,18 +180,58 @@ const Header: React.FC<HeaderProps> = ({ onReset, onToggleChat, isChatOpen, onTo
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
 
-        <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-brand-primary rounded flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center shadow-lg">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             </div>
-            <h1 className="text-lg font-bold text-white tracking-tight font-slashed-zero hidden sm:block">0relai</h1>
-        </div>
-        
-        {/* Project Context */}
-        <div className="h-6 w-px bg-glass-border mx-1 hidden sm:block"></div>
-        <div className="flex items-center gap-2 text-sm">
-            <span className="text-glass-text-secondary hidden sm:inline">Project:</span>
-            <span className="text-white font-medium max-w-[150px] sm:max-w-[200px] truncate">{state.projectData.name}</span>
+            
+            {/* Org Switcher */}
+            <div className="relative hidden sm:block">
+                <button 
+                    onClick={() => setShowOrgSwitcher(!showOrgSwitcher)}
+                    className="flex items-center gap-2 hover:bg-white/5 px-2 py-1 rounded transition-colors"
+                >
+                    <div className="text-left">
+                        <div className="text-[10px] text-glass-text-secondary font-bold uppercase tracking-wider">Organization</div>
+                        <div className="text-sm font-bold text-white flex items-center gap-1">
+                            {currentOrg?.name || 'Personal'}
+                            <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
+                </button>
+
+                {showOrgSwitcher && (
+                    <div className="absolute top-full left-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-2 z-[60] animate-fade-in">
+                        <div className="text-[10px] font-bold text-glass-text-secondary uppercase px-2 py-1 mb-1">Switch Organization</div>
+                        <div className="space-y-1">
+                            {state.organizations.map(org => (
+                                <button 
+                                    key={org.id}
+                                    onClick={() => handleSwitchOrg(org.id)}
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between ${currentOrg?.id === org.id ? 'bg-brand-primary/20 text-brand-primary' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                                >
+                                    <span>{org.name}</span>
+                                    {currentOrg?.id === org.id && <span>✓</span>}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="h-px bg-white/10 my-2"></div>
+                        <button 
+                            onClick={handleCreateOrg}
+                            className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:bg-white/5 hover:text-white flex items-center gap-2"
+                        >
+                            <span>+</span> Create Organization
+                        </button>
+                        <div className="h-px bg-white/10 my-2"></div>
+                        <button 
+                            onClick={() => { dispatch({ type: 'TRIGGER_ORG_MODAL', payload: true }); setShowOrgSwitcher(false); }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-slate-400 hover:bg-white/5 hover:text-white flex items-center gap-2"
+                        >
+                            <span>⚙️</span> Team Settings
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { Task, TaskStatus, ProjectData } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 import CodeEditor from './CodeEditor';
 import VirtualList from './VirtualList';
+import { useProject } from '../ProjectContext';
 
 interface KanbanBoardProps {
   tasks: Task[];
@@ -26,7 +27,6 @@ const getPriorityColor = (p?: string) => {
   }
 };
 
-// --- New Task Modal ---
 const NewTaskModal: React.FC<{
     status: TaskStatus;
     onClose: () => void;
@@ -110,25 +110,23 @@ const KanbanColumn: React.FC<{
   onDragStart: (e: React.DragEvent<HTMLDivElement>, task: Task) => void;
   onTaskClick: (task: Task) => void;
   onAddTask: (status: TaskStatus) => void;
-}> = ({ title, tasks, count, onDragOver, onDrop, onDragStart, onTaskClick, onAddTask }) => {
+  isReadOnly: boolean;
+}> = ({ title, tasks, count, onDragOver, onDrop, onDragStart, onTaskClick, onAddTask, isReadOnly }) => {
   
-  // Status Color Indicators
   const statusColor = {
     [TaskStatus.TODO]: 'bg-slate-500',
     [TaskStatus.IN_PROGRESS]: 'bg-brand-primary',
     [TaskStatus.DONE]: 'bg-green-500'
   }[title];
 
-  // Render Row for VirtualList
   const renderRow = (task: Task, style: React.CSSProperties) => (
       <div style={style} className="px-1 py-1.5">
           <div
-            draggable
-            onDragStart={(e) => onDragStart(e, task)}
+            draggable={!isReadOnly}
+            onDragStart={(e) => !isReadOnly && onDragStart(e, task)}
             onClick={() => onTaskClick(task)}
-            className="group bg-[#0b0e14] border border-glass-border rounded hover:border-brand-primary/50 transition-all p-3 cursor-pointer relative h-full flex flex-col"
+            className={`group bg-[#0b0e14] border border-glass-border rounded transition-all p-3 cursor-pointer relative h-full flex flex-col ${isReadOnly ? '' : 'hover:border-brand-primary/50'}`}
           >
-            {/* Header: Role & Priority */}
             <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono text-tech-cyan flex items-center gap-1">
@@ -143,12 +141,10 @@ const KanbanColumn: React.FC<{
                 </div>
             </div>
 
-            {/* Content */}
             <p className="text-sm text-gray-300 font-medium leading-snug mb-2 line-clamp-2 flex-grow">
                 {task.content}
             </p>
 
-            {/* Footer */}
             <div className="flex items-center justify-between mt-auto pt-2 border-t border-glass-border/50">
                 <div className="flex gap-2">
                     <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider font-bold ${getPriorityColor(task.priority)}`}>
@@ -171,29 +167,29 @@ const KanbanColumn: React.FC<{
     <div
       className="bg-brand-panel border border-glass-border rounded-lg p-3 w-full flex-shrink-0 min-h-[500px] flex flex-col"
       onDragOver={onDragOver}
-      onDrop={(e) => onDrop(e, title)}
+      onDrop={(e) => !isReadOnly && onDrop(e, title)}
     >
-      {/* Column Header */}
       <div className="flex justify-between items-center mb-4 px-1">
         <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
             <h3 className="font-bold text-sm text-gray-200 tracking-wide">{title}</h3>
             <span className="text-xs bg-brand-surface px-1.5 py-0.5 rounded text-glass-text-secondary font-mono">{count}</span>
         </div>
-        <button 
-            onClick={() => onAddTask(title)}
-            className="text-glass-text-secondary hover:text-white transition-colors hover:bg-white/5 p-1 rounded"
-            title="Add Task"
-        >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-        </button>
+        {!isReadOnly && (
+            <button 
+                onClick={() => onAddTask(title)}
+                className="text-glass-text-secondary hover:text-white transition-colors hover:bg-white/5 p-1 rounded"
+                title="Add Task"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+            </button>
+        )}
       </div>
 
-      {/* Tasks Container */}
       <div className="flex-grow overflow-hidden relative">
           <VirtualList 
             items={tasks}
-            itemHeight={140} // Fixed height for kanban cards for simplicity
+            itemHeight={140} 
             renderItem={renderRow}
             className="h-full custom-scrollbar"
           />
@@ -215,7 +211,8 @@ const TaskDetailModal: React.FC<{
     isGenerating: boolean;
     isGeneratingChecklist: boolean;
     isGeneratingCode: boolean;
-}> = ({ task, onClose, onDelete, onGenerate, onGenerateChecklist, onGenerateCode, onRefineCode, onCommitFile, onToggleChecklist, isGenerating, isGeneratingChecklist, isGeneratingCode }) => {
+    isReadOnly: boolean;
+}> = ({ task, onClose, onDelete, onGenerate, onGenerateChecklist, onGenerateCode, onRefineCode, onCommitFile, onToggleChecklist, isGenerating, isGeneratingChecklist, isGeneratingCode, isReadOnly }) => {
     const [activeTab, setActiveTab] = useState<'details' | 'guide' | 'code'>('details');
     const [copiedCode, setCopiedCode] = useState(false);
     const [refineCodeInput, setRefineCodeInput] = useState('');
@@ -231,7 +228,7 @@ const TaskDetailModal: React.FC<{
 
     const handleRefineCodeSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!refineCodeInput.trim() || !onRefineCode) return;
+        if(!refineCodeInput.trim() || !onRefineCode || isReadOnly) return;
         setIsRefiningCode(true);
         await onRefineCode(task.id, refineCodeInput);
         setIsRefiningCode(false);
@@ -242,7 +239,6 @@ const TaskDetailModal: React.FC<{
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
             <div className="bg-brand-panel border border-glass-border w-full max-w-5xl max-h-[90vh] rounded-lg shadow-2xl flex flex-col overflow-hidden animate-slide-in-up">
                 
-                {/* Modal Header */}
                 <div className="bg-brand-dark p-6 border-b border-glass-border flex justify-between items-start">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
@@ -255,12 +251,11 @@ const TaskDetailModal: React.FC<{
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={onClose} className="p-2 text-glass-text-secondary hover:text-white hover:bg-white/5 rounded transition-all">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
                 <div className="flex items-center gap-1 bg-brand-dark px-6 border-b border-glass-border">
                     <button 
                         onClick={() => setActiveTab('details')}
@@ -286,7 +281,6 @@ const TaskDetailModal: React.FC<{
 
                 <div className="flex-grow overflow-y-auto custom-scrollbar p-6 bg-brand-panel">
                     
-                    {/* DETAILS TAB */}
                     {activeTab === 'details' && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-6">
@@ -300,7 +294,7 @@ const TaskDetailModal: React.FC<{
                                 <div>
                                     <div className="flex justify-between items-center mb-3">
                                         <h3 className="text-xs font-bold text-glass-text uppercase tracking-wider">Sub-Tasks</h3>
-                                        {!task.checklist && (
+                                        {!task.checklist && !isReadOnly && (
                                             <button 
                                                 onClick={onGenerateChecklist}
                                                 disabled={isGeneratingChecklist}
@@ -318,7 +312,8 @@ const TaskDetailModal: React.FC<{
                                                     <input 
                                                         type="checkbox" 
                                                         checked={item.completed}
-                                                        onChange={() => onToggleChecklist(item.id)}
+                                                        onChange={() => !isReadOnly && onToggleChecklist(item.id)}
+                                                        disabled={isReadOnly}
                                                         className="mt-0.5 rounded border-glass-border bg-brand-dark text-brand-primary focus:ring-0"
                                                     />
                                                     <span className={`text-sm leading-snug ${item.completed ? 'text-glass-text-secondary line-through' : 'text-gray-300'}`}>
@@ -355,7 +350,6 @@ const TaskDetailModal: React.FC<{
                         </div>
                     )}
 
-                    {/* GUIDE TAB */}
                     {activeTab === 'guide' && (
                         <div>
                              {task.implementationGuide ? (
@@ -382,17 +376,16 @@ const TaskDetailModal: React.FC<{
                                     </p>
                                     <button
                                         onClick={onGenerate}
-                                        disabled={isGenerating}
-                                        className="px-6 py-2 bg-brand-primary text-white text-sm font-bold rounded-md hover:bg-brand-secondary transition-colors shadow-glow"
+                                        disabled={isGenerating || isReadOnly}
+                                        className="px-6 py-2 bg-brand-primary text-white text-sm font-bold rounded-md hover:bg-brand-secondary transition-colors shadow-glow disabled:opacity-50"
                                     >
-                                        {isGenerating ? 'Architecting...' : 'Initialize Guide Agent'}
+                                        {isGenerating ? 'Architecting...' : isReadOnly ? 'View Only' : 'Initialize Guide Agent'}
                                     </button>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* CODE TAB */}
                     {activeTab === 'code' && (
                         <div className="h-full flex flex-col">
                              {task.codeSnippet ? (
@@ -403,20 +396,22 @@ const TaskDetailModal: React.FC<{
                                             <p className="text-xs text-glass-text-secondary">{task.codeSnippet.description}</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button 
-                                                onClick={onGenerateCode}
-                                                disabled={isGeneratingCode}
-                                                className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-white transition-colors"
-                                            >
-                                                {isGeneratingCode ? 'Regenerating...' : 'Regenerate'}
-                                            </button>
+                                            {!isReadOnly && (
+                                                <button 
+                                                    onClick={onGenerateCode}
+                                                    disabled={isGeneratingCode}
+                                                    className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-white transition-colors"
+                                                >
+                                                    {isGeneratingCode ? 'Regenerating...' : 'Regenerate'}
+                                                </button>
+                                            )}
                                             <button 
                                                 onClick={handleCopyCode}
                                                 className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-white transition-colors font-bold"
                                             >
                                                 {copiedCode ? 'Copied!' : 'Copy Code'}
                                             </button>
-                                            {onCommitFile && (
+                                            {onCommitFile && !isReadOnly && (
                                                 <button
                                                     onClick={() => onCommitFile(task.id)}
                                                     className="text-xs bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded text-white transition-colors font-bold flex items-center gap-1 shadow-lg"
@@ -439,25 +434,26 @@ const TaskDetailModal: React.FC<{
                                         />
                                     </div>
                                     
-                                    {/* Code Refinement */}
-                                    <div className="mt-auto">
-                                        <form onSubmit={handleRefineCodeSubmit} className="relative flex gap-2">
-                                            <input 
-                                                type="text"
-                                                value={refineCodeInput}
-                                                onChange={(e) => setRefineCodeInput(e.target.value)}
-                                                placeholder="Ask to refactor or change the code... (e.g. 'Use async/await', 'Add comments')"
-                                                className="flex-grow glass-input rounded-lg px-4 py-3 text-sm focus:ring-brand-primary focus:border-brand-primary"
-                                            />
-                                            <button 
-                                                type="submit"
-                                                disabled={!refineCodeInput.trim() || isRefiningCode}
-                                                className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 rounded-lg disabled:opacity-50 transition-colors"
-                                            >
-                                                {isRefiningCode ? 'Refining...' : 'Refine'}
-                                            </button>
-                                        </form>
-                                    </div>
+                                    {!isReadOnly && (
+                                        <div className="mt-auto">
+                                            <form onSubmit={handleRefineCodeSubmit} className="relative flex gap-2">
+                                                <input 
+                                                    type="text"
+                                                    value={refineCodeInput}
+                                                    onChange={(e) => setRefineCodeInput(e.target.value)}
+                                                    placeholder="Ask to refactor or change the code... (e.g. 'Use async/await', 'Add comments')"
+                                                    className="flex-grow glass-input rounded-lg px-4 py-3 text-sm focus:ring-brand-primary focus:border-brand-primary"
+                                                />
+                                                <button 
+                                                    type="submit"
+                                                    disabled={!refineCodeInput.trim() || isRefiningCode}
+                                                    className="bg-white/10 hover:bg-white/20 text-white font-bold px-4 rounded-lg disabled:opacity-50 transition-colors"
+                                                >
+                                                    {isRefiningCode ? 'Refining...' : 'Refine'}
+                                                </button>
+                                            </form>
+                                        </div>
+                                    )}
                                 </div>
                              ) : (
                                 <div className="h-[400px] flex flex-col items-center justify-center text-center">
@@ -470,8 +466,8 @@ const TaskDetailModal: React.FC<{
                                     </p>
                                     <button
                                         onClick={onGenerateCode}
-                                        disabled={isGeneratingCode}
-                                        className="px-6 py-2 bg-gradient-to-r from-brand-secondary to-brand-accent text-white text-sm font-bold rounded-md hover:scale-105 transition-all shadow-glow flex items-center gap-2"
+                                        disabled={isGeneratingCode || isReadOnly}
+                                        className="px-6 py-2 bg-gradient-to-r from-brand-secondary to-brand-accent text-white text-sm font-bold rounded-md hover:scale-105 transition-all shadow-glow flex items-center gap-2 disabled:opacity-50"
                                     >
                                         {isGeneratingCode ? (
                                             <>
@@ -481,7 +477,7 @@ const TaskDetailModal: React.FC<{
                                         ) : (
                                             <>
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                                                <span>Generate Code Artifact</span>
+                                                <span>{isReadOnly ? 'View Only' : 'Generate Code Artifact'}</span>
                                             </>
                                         )}
                                     </button>
@@ -491,18 +487,21 @@ const TaskDetailModal: React.FC<{
                     )}
                 </div>
 
-                {/* Footer Actions */}
                 <div className="bg-brand-dark p-4 border-t border-glass-border flex justify-between items-center">
-                    <button 
-                        onClick={() => { if(window.confirm('Delete task?')) { onDelete(task.id); onClose(); } }}
-                        className="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        Delete Task
-                    </button>
-                    <button onClick={onClose} className="px-6 py-2 bg-white/10 hover:bg-white/15 text-white font-bold rounded-md text-sm transition-colors">
-                        Close
-                    </button>
+                    {!isReadOnly && (
+                        <button 
+                            onClick={() => { if(window.confirm('Delete task?')) { onDelete(task.id); onClose(); } }}
+                            className="text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            Delete Task
+                        </button>
+                    )}
+                    <div className={isReadOnly ? 'w-full flex justify-end' : ''}>
+                        <button onClick={onClose} className="px-6 py-2 bg-white/10 hover:bg-white/15 text-white font-bold rounded-md text-sm transition-colors">
+                            Close
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -510,15 +509,15 @@ const TaskDetailModal: React.FC<{
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateTasks, onGenerateGuide, onGenerateChecklist, onGenerateCode, onRefineCode, onCommitFile, onContinue }) => {
+  const { currentRole } = useProject();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingChecklist, setIsGeneratingChecklist] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
-  
-  // New State for Modal
   const [addingTaskStatus, setAddingTaskStatus] = useState<TaskStatus | null>(null);
 
-  // Drag and Drop Logic
+  const isReadOnly = currentRole === 'Viewer';
+
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, task: Task) => {
     e.dataTransfer.setData('taskId', task.id);
   }, []);
@@ -528,37 +527,37 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateT
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, newStatus: TaskStatus) => {
+    if (isReadOnly) return;
     const taskId = e.dataTransfer.getData('taskId');
     const updatedTasks = tasks.map(task =>
       task.id === taskId ? { ...task, status: newStatus } : task
     );
     onUpdateTasks(updatedTasks);
-  }, [tasks, onUpdateTasks]);
+  }, [tasks, onUpdateTasks, isReadOnly]);
 
-  // Handlers
   const handleGenerate = async () => {
-      if (!activeTask) return;
+      if (!activeTask || isReadOnly) return;
       setIsGenerating(true);
       await onGenerateGuide(activeTask.id);
       setIsGenerating(false);
   };
 
   const handleGenChecklist = async () => {
-    if (!activeTask || !onGenerateChecklist) return;
+    if (!activeTask || !onGenerateChecklist || isReadOnly) return;
     setIsGeneratingChecklist(true);
     await onGenerateChecklist(activeTask.id);
     setIsGeneratingChecklist(false);
   };
 
   const handleGenCode = async () => {
-    if (!activeTask || !onGenerateCode) return;
+    if (!activeTask || !onGenerateCode || isReadOnly) return;
     setIsGeneratingCode(true);
     await onGenerateCode(activeTask.id);
     setIsGeneratingCode(false);
   };
 
   const handleToggleItem = (itemId: string) => {
-    if (!activeTask) return;
+    if (!activeTask || isReadOnly) return;
     const updatedTasks = tasks.map(t => {
       if (t.id === activeTask.id) {
         return {
@@ -586,6 +585,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateT
   };
 
   const handleDeleteTask = (id: string) => {
+    if (isReadOnly) return;
     onUpdateTasks(tasks.filter(t => t.id !== id));
   };
 
@@ -630,6 +630,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateT
             isGenerating={isGenerating}
             isGeneratingChecklist={isGeneratingChecklist}
             isGeneratingCode={isGeneratingCode}
+            isReadOnly={isReadOnly}
           />
       )}
 
@@ -641,22 +642,23 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateT
           />
       )}
 
-      {/* Header Actions */}
       <div className="flex justify-between items-center mb-6">
         <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Active Agents Board</h2>
+            <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
+                Active Agents Board
+                {isReadOnly && <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700 font-normal">Viewer Mode</span>}
+            </h2>
             <p className="text-glass-text-secondary text-sm">Manage and execute architectural directives.</p>
         </div>
         <button 
             onClick={handleExportCSV}
             className="px-3 py-1.5 bg-brand-surface hover:bg-brand-surface/80 text-white text-xs font-bold rounded border border-glass-border flex items-center gap-2 transition-all"
         >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10V6m0 0L9 9m3-3l3 3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             Export CSV
         </button>
       </div>
 
-      {/* Board Columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-grow">
         {Object.values(TaskStatus).map(status => (
           <KanbanColumn
@@ -669,18 +671,21 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, projectData, onUpdateT
             onDrop={handleDrop}
             onTaskClick={setActiveTask}
             onAddTask={() => setAddingTaskStatus(status)}
+            isReadOnly={isReadOnly}
           />
         ))}
       </div>
       
-      <div className="text-center mt-8 mb-4">
-        <button
-          onClick={onContinue}
-          className="px-10 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-bold rounded shadow-lg transition-all text-sm"
-        >
-          Finalize & Deploy Documentation
-        </button>
-      </div>
+      {!isReadOnly && (
+        <div className="text-center mt-8 mb-4">
+            <button
+            onClick={onContinue}
+            className="px-10 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-bold rounded shadow-lg transition-all text-sm"
+            >
+            Finalize & Deploy Documentation
+            </button>
+        </div>
+      )}
     </div>
   );
 };

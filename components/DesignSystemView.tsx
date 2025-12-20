@@ -14,9 +14,10 @@ interface DesignSystemViewProps {
   hideActions?: boolean;
   onRefine?: (prompt: string) => Promise<void>;
   isRefining?: boolean;
+  readOnly?: boolean;
 }
 
-const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onContinue, hideActions, onRefine, isRefining = false }) => {
+const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onContinue, hideActions, onRefine, isRefining = false, readOnly = false }) => {
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'config'>('editor');
   const [isGeneratingWireframe, setIsGeneratingWireframe] = useState(false);
   const { dispatch, state } = useProject();
@@ -75,7 +76,7 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
           </div>
       )}
 
-      {onRefine && !hideActions && (
+      {onRefine && !hideActions && !readOnly && (
         <div className="max-w-3xl mx-auto mb-8 w-full">
             <RefineBar 
                 onRefine={onRefine} 
@@ -125,7 +126,7 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
                       />
                       <button 
                         onClick={handleGenerateWireframe}
-                        disabled={isGeneratingWireframe}
+                        disabled={isGeneratingWireframe || readOnly}
                         className="absolute bottom-4 right-4 bg-black/80 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-bold backdrop-blur-md border border-white/20 transition-all flex items-center gap-2"
                       >
                         {isGeneratingWireframe ? 'Regenerating...' : '🔄 Regenerate Prototype'}
@@ -142,8 +143,8 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
                         </p>
                         <button 
                             onClick={handleGenerateWireframe}
-                            disabled={isGeneratingWireframe}
-                            className="bg-brand-primary hover:bg-brand-secondary text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all transform hover:scale-105"
+                            disabled={isGeneratingWireframe || readOnly}
+                            className="bg-brand-primary hover:bg-brand-secondary text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isGeneratingWireframe ? (
                                 <div className="flex items-center gap-2">
@@ -177,7 +178,7 @@ const DesignSystemView: React.FC<DesignSystemViewProps> = ({ designSystem, onCon
         )}
       </div>
 
-      {!hideActions && (
+      {!hideActions && !readOnly && (
         <div className="text-center mt-6">
             <button
             onClick={onContinue}

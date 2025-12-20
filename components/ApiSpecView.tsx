@@ -14,6 +14,7 @@ interface ApiSpecViewProps {
   hideActions?: boolean;
   onRefine?: (prompt: string) => Promise<void>;
   isRefining?: boolean;
+  readOnly?: boolean;
 }
 
 const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
@@ -31,7 +32,7 @@ const MethodBadge: React.FC<{ method: string }> = ({ method }) => {
   );
 };
 
-const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue, hideActions, onRefine, isRefining = false }) => {
+const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue, hideActions, onRefine, isRefining = false, readOnly = false }) => {
   const { state } = useProject();
   const [activeTab, setActiveTab] = useState<'visual' | 'docs' | 'openapi'>('visual');
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -55,7 +56,7 @@ const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue
           </>
       )}
 
-      {onRefine && !hideActions && (
+      {onRefine && !hideActions && !readOnly && (
         <div className="max-w-3xl mx-auto mb-8">
             <RefineBar 
                 onRefine={onRefine} 
@@ -172,7 +173,7 @@ const ApiSpecView: React.FC<ApiSpecViewProps> = ({ apiSpec, onUpdate, onContinue
           </div>
       )}
 
-      {!hideActions && (
+      {!hideActions && !readOnly && (
         <div className="text-center">
             <button
             onClick={onContinue}

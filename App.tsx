@@ -33,6 +33,7 @@ import ShortcutsModal from './components/ShortcutsModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import OnboardingTour from './components/OnboardingTour';
 import UpgradeModal from './components/UpgradeModal';
+import OrganizationModal from './components/OrganizationModal';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useProject();
@@ -306,6 +307,10 @@ const AppContent: React.FC = () => {
 
         {state.ui.showUpgradeModal && (
             <UpgradeModal onClose={() => dispatch({ type: 'TRIGGER_UPGRADE_MODAL', payload: false })} />
+        )}
+
+        {state.ui.showOrgModal && (
+            <OrganizationModal onClose={() => dispatch({ type: 'TRIGGER_ORG_MODAL', payload: false })} />
         )}
         
         <Header 

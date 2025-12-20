@@ -10,12 +10,13 @@ import DiffViewer from './DiffViewer';
 
 interface FileStructureViewProps {
   structure?: FileNode[];
-  architecture?: ArchitectureData; // Added for reverse lookup
+  architecture?: ArchitectureData;
   onUpdate?: (newStructure: FileNode[]) => void;
   onContinue: () => void;
   hideActions?: boolean;
   onRefine?: (prompt: string) => Promise<void>;
   isRefining?: boolean;
+  readOnly?: boolean;
 }
 
 const FileItem: React.FC<{ 
@@ -27,12 +28,12 @@ const FileItem: React.FC<{
     onDelete: (path: string) => void;
     onAdd: (path: string, type: 'file' | 'folder') => void;
     forceOpen?: boolean;
-}> = ({ node, path, level, onSelect, selectedNode, onDelete, onAdd, forceOpen }) => {
+    isReadOnly?: boolean;
+}> = ({ node, path, level, onSelect, selectedNode, onDelete, onAdd, forceOpen, isReadOnly }) => {
   const [isOpen, setIsOpen] = useState(false);
   const isSelected = selectedNode === node;
   const currentPath = path ? `${path}/${node.name}` : node.name;
   
-  // Auto-expand if forceOpen is true or selected node is a descendant
   useEffect(() => {
       if(forceOpen) setIsOpen(true);
   }, [forceOpen]);
@@ -71,22 +72,23 @@ const FileItem: React.FC<{
             </span>
         </div>
         
-        {/* Quick Actions (Hover) */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {node.type === 'folder' && (
-                <>
-                    <button onClick={(e) => handleAction(e, 'addFile')} title="Add File" className="p-0.5 hover:bg-slate-600 rounded text-slate-400 hover:text-white">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    </button>
-                    <button onClick={(e) => handleAction(e, 'addFolder')} title="Add Folder" className="p-0.5 hover:bg-slate-600 rounded text-slate-400 hover:text-white">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
-                    </button>
-                </>
-            )}
-            <button onClick={(e) => handleAction(e, 'delete')} title="Delete" className="p-0.5 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-        </div>
+        {!isReadOnly && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {node.type === 'folder' && (
+                    <>
+                        <button onClick={(e) => handleAction(e, 'addFile')} title="Add File" className="p-0.5 hover:bg-slate-600 rounded text-slate-400 hover:text-white">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </button>
+                        <button onClick={(e) => handleAction(e, 'addFolder')} title="Add Folder" className="p-0.5 hover:bg-slate-600 rounded text-slate-400 hover:text-white">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                        </button>
+                    </>
+                )}
+                <button onClick={(e) => handleAction(e, 'delete')} title="Delete" className="p-0.5 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        )}
       </div>
       {node.type === 'folder' && isOpen && node.children && (
         <div>
@@ -101,6 +103,7 @@ const FileItem: React.FC<{
                 onDelete={onDelete}
                 onAdd={onAdd}
                 forceOpen={forceOpen}
+                isReadOnly={isReadOnly}
             />
           ))}
         </div>
@@ -109,34 +112,29 @@ const FileItem: React.FC<{
   );
 };
 
-const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, architecture, onUpdate, onContinue, hideActions, onRefine, isRefining = false }) => {
+const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, architecture, onUpdate, onContinue, hideActions, onRefine, isRefining = false, readOnly = false }) => {
   const { state, dispatch } = useProject();
   const { addToast } = useToast();
   
   const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
   const [selectedPath, setSelectedPath] = useState<string>('');
   
-  // Editor State
   const [editorContent, setEditorContent] = useState('');
-  
-  // Diff State
   const [pendingContent, setPendingContent] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   
   const gemini = React.useMemo(() => new GeminiService(), []);
 
-  // Sync editor content when selection changes
   useEffect(() => {
       if (selectedNode) {
           setEditorContent(selectedNode.content || '');
-          setPendingContent(null); // Clear pending diff on node switch
+          setPendingContent(null); 
       } else {
           setEditorContent('');
           setPendingContent(null);
       }
   }, [selectedNode]);
 
-  // Handle deep link from global state
   useEffect(() => {
       if (state.ui.selectedFilePath && structure) {
           const findNode = (nodes: FileNode[], pathParts: string[]): FileNode | null => {
@@ -168,7 +166,6 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
   const handleNodeSelect = (node: FileNode) => {
       setSelectedNode(node);
       
-      // Calculate full path to send to global state
       const findPath = (nodes: FileNode[], target: FileNode, currentPath: string): string | null => {
           for (const n of nodes) {
               const fullPath = currentPath ? `${currentPath}/${n.name}` : n.name;
@@ -195,9 +192,8 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
       dispatch({ type: 'SET_PHASE', payload: AppPhase.ARCHITECTURE });
   };
 
-  // --- CRUD Logic ---
   const handleDelete = (pathToDelete: string) => {
-      if (!onUpdate) return;
+      if (!onUpdate || readOnly) return;
       
       const deleteNode = (nodes: FileNode[], currentPath: string): FileNode[] => {
           return nodes.filter(node => {
@@ -216,7 +212,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
   };
 
   const handleAdd = (parentPath: string, type: 'file' | 'folder') => {
-      if (!onUpdate) return;
+      if (!onUpdate || readOnly) return;
       const name = prompt(`Enter ${type} name:`);
       if (!name) return;
 
@@ -244,7 +240,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
   };
 
   const handleAddRoot = () => {
-    if(!onUpdate) return;
+    if(!onUpdate || readOnly) return;
     const name = prompt("Enter root folder/file name:");
     if(!name) return;
     const type = confirm("Is this a folder?") ? 'folder' : 'file';
@@ -259,9 +255,8 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
   };
 
   const handleSaveContent = () => {
-      if (!selectedNode || !onUpdate) return;
+      if (!selectedNode || !onUpdate || readOnly) return;
       
-      // Deep update structure with new content
       const updateContent = (nodes: FileNode[]): FileNode[] => {
           return nodes.map(node => {
               if (node === selectedNode) {
@@ -275,27 +270,21 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
       };
 
       const newStructure = updateContent(JSON.parse(JSON.stringify(structure)));
-      
-      // Update selected node ref to keep it in sync locally
       onUpdate(newStructure);
-      
-      // Optimistically update current selected node object to prevent flicker/loss
       selectedNode.content = editorContent; 
       addToast("File saved", "success");
   };
 
   const handleGeneratePreview = async () => {
-      if (!selectedNode) return;
+      if (!selectedNode || readOnly) return;
       setIsGenerating(true);
       try {
           const content = await gemini.generateFilePreview(selectedNode, state.projectData);
           
           if (editorContent && editorContent.trim().length > 0) {
-              // If we already have content, show Diff instead of overwriting
               setPendingContent(content);
               addToast("Generated content ready for review", "info");
           } else {
-              // Direct set if empty
               setEditorContent(content);
               selectedNode.content = content;
               handleSaveContent();
@@ -308,7 +297,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
   };
 
   const handleAcceptDiff = () => {
-      if (pendingContent !== null && selectedNode) {
+      if (pendingContent !== null && selectedNode && !readOnly) {
           setEditorContent(pendingContent);
           selectedNode.content = pendingContent;
           handleSaveContent();
@@ -322,7 +311,6 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
       addToast("Generated content discarded", "info");
   };
 
-  // Determine if we should expand all folders (simple heuristic for deep linking)
   const shouldForceOpen = !!state.ui.selectedFilePath;
 
   return (
@@ -336,7 +324,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
           </>
       )}
 
-      {onRefine && !hideActions && (
+      {onRefine && !hideActions && !readOnly && (
         <div className="max-w-3xl mx-auto mb-8 w-full">
             <RefineBar 
                 onRefine={onRefine} 
@@ -352,7 +340,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
             <div className="bg-slate-800 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
                 <span className="text-sm font-semibold text-slate-400">EXPLORER</span>
                 <div className="flex gap-2">
-                    {onUpdate && (
+                    {onUpdate && !readOnly && (
                         <button 
                             onClick={handleAddRoot}
                             className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
@@ -378,6 +366,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                         onDelete={handleDelete}
                         onAdd={handleAdd}
                         forceOpen={shouldForceOpen}
+                        isReadOnly={readOnly}
                     />
                 ))}
             </div>
@@ -387,7 +376,6 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
         <div className="md:col-span-2 bg-[#0b0e14] rounded-lg border border-slate-700 flex flex-col overflow-hidden relative shadow-inner">
             {selectedNode ? (
                 <>
-                    {/* Editor Header */}
                     <div className="bg-[#151b26] px-4 py-2 border-b border-white/5 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-glass-text-secondary">{selectedNode.type === 'file' ? '📄' : '📂'}</span>
@@ -404,7 +392,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                                     <span>📦</span> View Node
                                 </button>
                             )}
-                            {selectedNode.type === 'file' && (
+                            {selectedNode.type === 'file' && !readOnly && (
                                 <button 
                                     onClick={handleGeneratePreview}
                                     disabled={isGenerating}
@@ -414,17 +402,18 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                                     {editorContent ? 'Regenerate' : 'Generate'}
                                 </button>
                             )}
-                            <button 
-                                onClick={handleSaveContent}
-                                className="text-xs bg-slate-700 hover:bg-white text-slate-300 hover:text-black px-3 py-1.5 rounded transition-all font-bold"
-                            >
-                                Save
-                            </button>
+                            {!readOnly && (
+                                <button 
+                                    onClick={handleSaveContent}
+                                    className="text-xs bg-slate-700 hover:bg-white text-slate-300 hover:text-black px-3 py-1.5 rounded transition-all font-bold"
+                                >
+                                    Save
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {/* Diff Actions Header (Visible only when pending content exists) */}
-                    {pendingContent && (
+                    {pendingContent && !readOnly && (
                         <div className="bg-yellow-900/20 border-b border-yellow-700/30 px-4 py-2 flex items-center justify-between">
                             <span className="text-xs text-yellow-200">AI generated new content. Review changes below:</span>
                             <div className="flex gap-2">
@@ -444,7 +433,6 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                         </div>
                     )}
 
-                    {/* Editor Body */}
                     <div className="flex-grow relative bg-[#0b0e14] overflow-hidden">
                         {selectedNode.type === 'folder' ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
@@ -462,13 +450,13 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                         ) : (
                             <CodeEditor 
                                 value={editorContent}
-                                onChange={setEditorContent}
+                                onChange={!readOnly ? setEditorContent : undefined}
                                 language={selectedNode.name.split('.').pop()}
-                                placeholder={isGenerating ? "Generating preview..." : "// File content is empty. Click 'Generate' to use AI scaffold."}
+                                readOnly={readOnly}
+                                placeholder={isGenerating ? "Generating preview..." : "// File content is empty."}
                             />
                         )}
                         
-                        {/* Loading Overlay */}
                         {isGenerating && (
                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
                                 <div className="bg-[#1e293b] p-4 rounded-xl border border-white/10 flex flex-col items-center shadow-2xl">
@@ -490,7 +478,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
         </div>
       </div>
 
-      {!hideActions && (
+      {!hideActions && !readOnly && (
         <div className="text-center mt-8">
             <button
             onClick={onContinue}

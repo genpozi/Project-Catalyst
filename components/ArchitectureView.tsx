@@ -14,6 +14,7 @@ interface ArchitectureViewProps {
   hideActions?: boolean;
   onRefine?: (prompt: string) => Promise<void>;
   isRefining?: boolean;
+  readOnly?: boolean;
 }
 
 const StackCard: React.FC<{ title: string; value: string; icon: string }> = ({ title, value, icon }) => (
@@ -26,7 +27,7 @@ const StackCard: React.FC<{ title: string; value: string; icon: string }> = ({ t
   </div>
 );
 
-const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onContinue, hideActions, onRefine, isRefining = false }) => {
+const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onContinue, hideActions, onRefine, isRefining = false, readOnly = false }) => {
   const [activeTab, setActiveTab] = useState<'visual' | 'strategy' | 'diagram' | 'iac' | 'cost'>('visual');
   const [isGeneratingCloud, setIsGeneratingCloud] = useState(false);
   const [isGeneratingCost, setIsGeneratingCost] = useState(false);
@@ -164,7 +165,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
           </>
       )}
 
-      {onRefine && !hideActions && (
+      {onRefine && !hideActions && !readOnly && (
         <div className="max-w-3xl mx-auto mb-6 w-full">
             <RefineBar 
                 onRefine={onRefine} 
@@ -226,6 +227,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                                 min="100" max="1000000" step="100"
                                 value={userCount}
                                 onChange={(e) => setUserCount(parseInt(e.target.value))}
+                                disabled={readOnly}
                                 className="w-full accent-brand-secondary cursor-pointer h-1.5 bg-white/10 rounded-lg appearance-none"
                             />
                         </div>
@@ -239,12 +241,13 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                                 min="1" max="1000" step="1"
                                 value={storageGB}
                                 onChange={(e) => setStorageGB(parseInt(e.target.value))}
+                                disabled={readOnly}
                                 className="w-full accent-brand-secondary cursor-pointer h-1.5 bg-white/10 rounded-lg appearance-none"
                             />
                         </div>
                         <button 
                             onClick={handleGenerateCost}
-                            disabled={isGeneratingCost}
+                            disabled={isGeneratingCost || readOnly}
                             className="w-full py-1.5 bg-brand-primary/20 hover:bg-brand-primary text-brand-primary hover:text-white text-[10px] font-bold rounded border border-brand-primary/30 transition-all flex justify-center gap-2"
                         >
                             {isGeneratingCost ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div> : '⚡ Apply Load'}
@@ -259,6 +262,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                     onGenerateFromSpec={handleGenerateFromSpec}
                     nodeStatuses={nodeStatuses}
                     fileStructure={state.projectData.fileStructure}
+                    readOnly={readOnly}
                 />
                 <p className="text-center text-[10px] text-glass-text-secondary mt-2 opacity-70">
                     Interactive Canvas: Drag nodes to rearrange. Adjust load sliders to test scalability. Click nodes to link code.
@@ -346,8 +350,8 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                          </p>
                          <button
                             onClick={handleGenerateInfrastructure}
-                            disabled={isGeneratingCloud}
-                            className="bg-brand-primary hover:bg-brand-secondary text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all"
+                            disabled={isGeneratingCloud || readOnly}
+                            className="bg-brand-primary hover:bg-brand-secondary text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50"
                          >
                             {isGeneratingCloud ? 'Architecting...' : 'Generate System Diagram'}
                          </button>
@@ -388,8 +392,8 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                          </p>
                          <button
                             onClick={handleGenerateInfrastructure}
-                            disabled={isGeneratingCloud}
-                            className="bg-brand-primary hover:bg-brand-secondary text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all"
+                            disabled={isGeneratingCloud || readOnly}
+                            className="bg-brand-primary hover:bg-brand-secondary text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50"
                          >
                             {isGeneratingCloud ? 'Coding Infrastructure...' : 'Generate Terraform Config'}
                          </button>
@@ -408,7 +412,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                             </h3>
                             <button 
                                 onClick={handleGenerateCost}
-                                disabled={isGeneratingCost}
+                                disabled={isGeneratingCost || readOnly}
                                 className="bg-brand-primary hover:bg-brand-secondary text-white text-xs px-4 py-2 rounded-lg font-bold transition-all disabled:opacity-50"
                             >
                                 {isGeneratingCost ? 'Calculating...' : 'Recalculate Estimate'}
@@ -424,6 +428,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                                         min="100" max="1000000" step="100"
                                         value={userCount}
                                         onChange={(e) => setUserCount(parseInt(e.target.value))}
+                                        disabled={readOnly}
                                         className="w-full accent-brand-secondary cursor-pointer"
                                      />
                                      <span className="text-sm font-mono text-white min-w-[80px] text-right">{userCount.toLocaleString()}</span>
@@ -437,6 +442,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
                                         min="1" max="1000" step="1"
                                         value={storageGB}
                                         onChange={(e) => setStorageGB(parseInt(e.target.value))}
+                                        disabled={readOnly}
                                         className="w-full accent-brand-secondary cursor-pointer"
                                      />
                                      <span className="text-sm font-mono text-white min-w-[80px] text-right">{storageGB} GB</span>
@@ -498,7 +504,7 @@ const ArchitectureView: React.FC<ArchitectureViewProps> = ({ architecture, onCon
         )}
       </div>
 
-      {!hideActions && activeTab === 'visual' && (
+      {!hideActions && activeTab === 'visual' && !readOnly && (
         <div className="text-center mt-8">
             <button
             onClick={onContinue}

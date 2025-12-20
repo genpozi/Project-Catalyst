@@ -45,16 +45,24 @@
 - [x] **Upgrade UI:** Pricing table and upgrade simulation.
 
 ### Phase 12.2: Team Dynamics
-- [ ] **Organization Support:** Shared workspaces.
-- [ ] **RBAC:** Admin/Editor/Viewer roles.
-- [ ] **Real-time Cursors:** Visual presence on the board.
+- [x] **Organization Support:** Shared workspaces and switching logic.
+- [x] **Member Management:** Invite flows and Role assignment (Owner/Admin/Member/Viewer).
+- [x] **RBAC Matrix:** Visual permission designer.
 
 ### Phase 12.3: Security & Compliance
-- [ ] **Hardening:** Row Level Security (RLS) audits.
-- [ ] **Edge Proxy:** Hide API keys behind a backend proxy.
+- [x] **Audit Logs:** Immutable record of critical actions.
+- [x] **Security Engine:** Automated generation of Headers, Rate Limits, and Compliance Checklists (SOC2, HIPAA).
+- [x] **Hardening:** UI simulators for Traffic and Access Control.
 
 ---
 
-## 📉 Archive
-*   *Phases 1-9 completed.*
-*   *Old Roadmap V2 merged.*
+## 🚀 EPIC 3: Edge Hardening & Performance
+**Focus:** Moving closer to a native-like experience for heavy compute tasks.
+
+### Phase 13.1: WebContainer v2 (Next)
+- [ ] **Node.js Runtime:** Integrate WebContainer API to run `npm install` and build steps in browser.
+- [ ] **Terminal Emulator:** Add XTerm.js to the UI for live build logs.
+
+## 🔮 Future
+- [ ] **Plugin Marketplace:** Allow 3rd party developers to submit plugins.
+- [ ] **Offline P2P:** Collaboration via WebRTC without cloud server.

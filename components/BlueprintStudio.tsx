@@ -119,7 +119,7 @@ const SnapshotModal: React.FC<{
 };
 
 const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate, onRefine, onContinue, isRefining }) => {
-  const { dispatch } = useProject();
+  const { dispatch, currentRole } = useProject();
   const { addToast } = useToast();
   
   const [activeTab, setActiveTab] = useState<Tab>('Architecture');
@@ -136,6 +136,9 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   const [focusMode, setFocusMode] = useState(false);
 
   const gemini = React.useMemo(() => new GeminiService(), []);
+  
+  // RBAC Enforcement
+  const isReadOnly = currentRole === 'Viewer';
 
   const getDataKey = (tab: Tab): keyof ProjectData => {
     switch (tab) {
@@ -156,6 +159,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   }, [activeTab, projectData]);
 
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (isReadOnly) return;
     setJsonContent(e.target.value);
     try {
       const parsed = JSON.parse(e.target.value);
@@ -168,7 +172,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
 
   const handleRefineSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!refinePrompt.trim() || isRefining) return;
+    if (!refinePrompt.trim() || isRefining || isReadOnly) return;
     addToast("Refining blueprint...", "info");
     await onRefine(activeTab, refinePrompt);
     addToast("Refinement complete!", "success");
@@ -191,11 +195,13 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   };
 
   const handleCreateSnapshot = (name: string, desc: string) => {
+      if (isReadOnly) return;
       dispatch({ type: 'CREATE_SNAPSHOT', payload: { name, description: desc } });
       addToast(`Snapshot '${name}' saved`, "success");
   };
 
   const handleRestoreSnapshot = (id: string) => {
+      if (isReadOnly) return;
       dispatch({ type: 'RESTORE_SNAPSHOT', payload: id });
       setShowSnapshots(false);
       setCompareSnapshot(null);
@@ -204,6 +210,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   };
 
   const handleDeleteSnapshot = (id: string) => {
+      if (isReadOnly) return;
       dispatch({ type: 'DELETE_SNAPSHOT', payload: id });
       addToast("Snapshot deleted", "info");
   };
@@ -216,7 +223,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   };
 
   const handleAutoFixJson = async () => {
-      if(!jsonContent || !jsonError) return;
+      if(!jsonContent || !jsonError || isReadOnly) return;
       setIsFixingJson(true);
       try {
           const fixed = await gemini.fixJson(jsonContent);
@@ -271,7 +278,10 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
 
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Blueprint Studio</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+              Blueprint Studio
+              {isReadOnly && <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700 font-normal">Viewer Mode</span>}
+          </h2>
           <p className="text-glass-text-secondary text-sm">Refine your specifications before agent rule generation.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -291,15 +301,17 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                 <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{activeCommentCount}</span>
             )}
           </button>
-          <button
-            onClick={() => setShowSnapshots(true)}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
-          >
-            <span>🕰️ History</span>
-            {projectData.snapshots && projectData.snapshots.length > 0 && (
-                <span className="bg-brand-primary text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectData.snapshots.length}</span>
-            )}
-          </button>
+          {!isReadOnly && (
+              <button
+                onClick={() => setShowSnapshots(true)}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
+              >
+                <span>🕰️ History</span>
+                {projectData.snapshots && projectData.snapshots.length > 0 && (
+                    <span className="bg-brand-primary text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectData.snapshots.length}</span>
+                )}
+              </button>
+          )}
           <button
             onClick={handleHealthCheck}
             disabled={isCheckingHealth}
@@ -307,7 +319,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
           >
             {isCheckingHealth ? <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin"></div> : <span>🛡️ Health Check</span>}
           </button>
-          {!focusMode && (
+          {!focusMode && !isReadOnly && (
             <button
                 onClick={onContinue}
                 className="px-6 py-2 glass-button-primary text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-all flex items-center gap-2"
@@ -403,19 +415,22 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                  <textarea
                     value={jsonContent}
                     onChange={handleJsonChange}
-                    className="flex-grow w-full bg-transparent text-blue-200 font-mono text-sm p-4 pl-10 focus:outline-none resize-none leading-relaxed"
+                    readOnly={isReadOnly}
+                    className={`flex-grow w-full bg-transparent text-blue-200 font-mono text-sm p-4 pl-10 focus:outline-none resize-none leading-relaxed ${isReadOnly ? 'cursor-not-allowed opacity-80' : ''}`}
                     spellCheck={false}
                  />
                  {jsonError && (
                     <div className="absolute bottom-4 right-4 bg-red-900/90 text-red-200 px-4 py-2 rounded-lg text-xs border border-red-700/50 animate-pulse backdrop-blur flex items-center gap-3">
                         <span>Syntax Warning: {jsonError}</span>
-                        <button 
-                            onClick={handleAutoFixJson}
-                            disabled={isFixingJson}
-                            className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[10px] uppercase font-bold border border-white/20"
-                        >
-                            {isFixingJson ? 'Fixing...' : 'Auto-Fix'}
-                        </button>
+                        {!isReadOnly && (
+                            <button 
+                                onClick={handleAutoFixJson}
+                                disabled={isFixingJson}
+                                className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-[10px] uppercase font-bold border border-white/20"
+                            >
+                                {isFixingJson ? 'Fixing...' : 'Auto-Fix'}
+                            </button>
+                        )}
                     </div>
                  )}
                </div>
@@ -425,18 +440,18 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                  </div>
              ) : (
                 <div className="h-full flex flex-col">
-                  {activeTab === 'Architecture' && <ArchitectureView architecture={projectData.architecture} onContinue={() => {}} hideActions={true} />}
-                  {activeTab === 'Data Model' && <DataModelView data={projectData.schema} onContinue={() => {}} hideActions={true} />}
-                  {activeTab === 'Files' && <FileStructureView structure={projectData.fileStructure} onContinue={() => {}} hideActions={true} />}
-                  {activeTab === 'UI/UX' && <DesignSystemView designSystem={projectData.designSystem} onContinue={() => {}} hideActions={true} />}
-                  {activeTab === 'API' && <ApiSpecView apiSpec={projectData.apiSpec} onContinue={() => {}} hideActions={true} />}
-                  {activeTab === 'Security' && <SecurityView securityContext={projectData.securityContext} onContinue={() => {}} hideActions={true} />}
+                  {activeTab === 'Architecture' && <ArchitectureView architecture={projectData.architecture} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
+                  {activeTab === 'Data Model' && <DataModelView data={projectData.schema} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
+                  {activeTab === 'Files' && <FileStructureView structure={projectData.fileStructure} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
+                  {activeTab === 'UI/UX' && <DesignSystemView designSystem={projectData.designSystem} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
+                  {activeTab === 'API' && <ApiSpecView apiSpec={projectData.apiSpec} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
+                  {activeTab === 'Security' && <SecurityView securityContext={projectData.securityContext} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
                 </div>
              )}
           </div>
 
           {/* AI Refinement Bar */}
-          {mode === 'visual' && (
+          {mode === 'visual' && !isReadOnly && (
               <div className="bg-white/5 border-t border-white/5 p-4">
                  <form onSubmit={handleRefineSubmit} className="flex gap-2">
                     <input 
