@@ -1,15 +1,9 @@
 
-const CACHE_NAME = '0relai-v3.1-cache';
+const CACHE_NAME = '0relai-v4.0-cache';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js',
-  'https://aistudiocdn.com/react-dom@^19.2.0/',
-  'https://aistudiocdn.com/react@^19.2.0/',
-  'https://aistudiocdn.com/@google/genai@^1.29.1',
-  'https://esm.run/jszip'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -39,23 +33,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('cdn') || event.request.url.includes('esm.run')) {
-      event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-          const fetchPromise = fetch(event.request).then((networkResponse) => {
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, networkResponse.clone());
-            });
-            return networkResponse;
-          });
-          return cachedResponse || fetchPromise;
-        })
-      );
-  } else {
-      event.respondWith(
-        fetch(event.request).catch(() => {
-          return caches.match(event.request);
-        })
-      );
+  // CRITICAL FIX: Do not attempt to cache cross-origin CDN resources (Tailwind, etc.)
+  // in the Service Worker when running with COOP/COEP headers.
+  // This prevents the "Failed to fetch" and "Blocked by CORS policy" errors.
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
   }
+
+  // Network First strategy for local assets to ensure fresh code
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });
