@@ -9,19 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.3",
-    "react": "18.2.0",
-    "@google/genai": "0.1.1",
-    "jszip": "3.10.1",
-    "@mlc-ai/web-llm": "0.2.46",
-    "html-to-image": "1.11.11",
-    "@supabase/supabase-js": "2.39.8",
-    "reactflow": "11.11.3",
-    "@webcontainer/api": "1.1.9",
-    "xterm": "5.3.0",
-    "xterm-addon-fit": "0.8.0",
-    "vite": "5.2.0",
-    "@vitejs/plugin-react": "4.2.1"
+    "react-dom": "^19.2.0",
+    "react": "^19.2.0",
+    "@google/genai": "^1.29.1",
+    "jszip": "latest",
+    "@mlc-ai/web-llm": "latest",
+    "html-to-image": "latest",
+    "@supabase/supabase-js": "^2.89.0",
+    "reactflow": "^11.11.4",
+    "@webcontainer/api": "latest",
+    "xterm": "latest",
+    "xterm-addon-fit": "latest",
+    "vite": "^7.3.0",
+    "@vitejs/plugin-react": "^5.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
