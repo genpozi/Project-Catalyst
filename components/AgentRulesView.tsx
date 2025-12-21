@@ -4,6 +4,7 @@ import { AgentRuleConfig } from '../types';
 import { useProject } from '../ProjectContext';
 import { GeminiService } from '../GeminiService';
 import { useToast } from './Toast';
+import RefineBar from './RefineBar';
 
 interface AgentRulesViewProps {
   rules?: string;
@@ -87,24 +88,38 @@ const AgentRulesView: React.FC<AgentRulesViewProps> = ({ rules, onContinue, onRe
   };
 
   return (
-    <div className="animate-slide-in-up h-full flex flex-col">
-      <div className="mb-6 text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold text-brand-text mb-2">Agent Protocol Engine</h2>
-        <p className="text-blue-200 max-w-2xl mx-auto">
-            Configure the "Brain" of your AI coding assistant (Cursor, Windsurf, Copilot). 
-            Define strict behavioral rules to ensure code consistency.
-        </p>
+    <div className="animate-fade-in flex flex-col h-full overflow-hidden">
+      
+      {/* Header */}
+      <div className="flex-shrink-0 mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Agent Rules Engine</h2>
+                <p className="text-xs text-glass-text-secondary">Configure the behavior of your AI coding assistant.</p>
+            </div>
+          </div>
+
+          {onRefine && (
+            <RefineBar 
+                onRefine={onRefine} 
+                isRefining={isRefining} 
+                placeholder="e.g. 'Enforce strict TypeScript typing', 'Prefer functional components'" 
+                className="mb-2"
+            />
+          )}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-[500px]">
+      <div className="flex-grow min-h-0 flex flex-col lg:flex-row gap-6 overflow-hidden">
           
           {/* Left: Configurator */}
-          <div className="w-full lg:w-1/3 bg-slate-900/50 rounded-xl border border-white/5 p-6 flex flex-col">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
-                  <span>⚙️</span> Rule Configuration
-              </h3>
+          <div className="w-full lg:w-1/3 bg-[#0b0e14] rounded-xl border border-white/5 flex flex-col overflow-hidden">
+              <div className="bg-slate-900/50 p-4 border-b border-white/5">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>⚙️</span> Configuration
+                </h3>
+              </div>
               
-              <div className="space-y-6 flex-grow overflow-y-auto custom-scrollbar pr-2">
+              <div className="p-4 space-y-6 flex-grow overflow-y-auto custom-scrollbar">
                   <div>
                       <label className="text-[10px] font-bold text-glass-text-secondary uppercase block mb-2">Agent Tone</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -181,20 +196,20 @@ const AgentRulesView: React.FC<AgentRulesViewProps> = ({ rules, onContinue, onRe
                   </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-white/5">
+              <div className="p-4 border-t border-white/5 bg-slate-900/50">
                   <button 
                     onClick={handleRegenerate}
                     disabled={isGenerating}
-                    className="w-full py-3 bg-brand-primary hover:bg-brand-secondary text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full py-2 bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                       {isGenerating ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                            <span>Synthesizing Rules...</span>
+                            <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                            <span>Synthesizing...</span>
                           </>
                       ) : (
                           <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             <span>Regenerate Rules</span>
                           </>
                       )}
@@ -203,22 +218,22 @@ const AgentRulesView: React.FC<AgentRulesViewProps> = ({ rules, onContinue, onRe
           </div>
 
           {/* Right: Preview */}
-          <div className="w-full lg:w-2/3 flex flex-col bg-[#0b0e14] rounded-xl border border-white/5 overflow-hidden shadow-2xl">
-              <div className="bg-slate-900 px-4 py-3 border-b border-white/5 flex justify-between items-center">
+          <div className="w-full lg:w-2/3 flex flex-col bg-[#0b0e14] rounded-xl border border-white/5 overflow-hidden shadow-inner">
+              <div className="bg-slate-900 px-4 py-2 border-b border-white/5 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                       <span className="text-xs font-mono text-brand-accent">.cursorrules</span>
-                      {isGenerating && <span className="text-[10px] text-glass-text-secondary animate-pulse">Updating...</span>}
+                      {isGenerating && <span className="text-[9px] text-glass-text-secondary animate-pulse">Updating...</span>}
                   </div>
                   <div className="flex gap-2">
                       <button 
                           onClick={handleCopy}
-                          className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors border border-white/5"
+                          className="px-3 py-1 text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-white rounded transition-colors border border-white/5"
                       >
                           {copied ? 'Copied!' : 'Copy'}
                       </button>
                       <button 
                           onClick={handleDownload}
-                          className="px-3 py-1.5 text-xs bg-brand-secondary/20 hover:bg-brand-secondary/40 text-brand-secondary border border-brand-secondary/50 rounded-lg transition-colors flex items-center gap-1"
+                          className="px-3 py-1 text-[10px] font-bold bg-brand-secondary/20 hover:bg-brand-secondary/40 text-brand-secondary border border-brand-secondary/50 rounded transition-colors flex items-center gap-1"
                       >
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                           Download
@@ -226,20 +241,21 @@ const AgentRulesView: React.FC<AgentRulesViewProps> = ({ rules, onContinue, onRe
                   </div>
               </div>
               
-              <div className="flex-grow relative">
-                  <pre className="absolute inset-0 p-6 text-sm font-mono text-slate-300 overflow-auto custom-scrollbar leading-relaxed whitespace-pre-wrap">
+              <div className="flex-grow relative overflow-hidden">
+                  <pre className="absolute inset-0 p-6 text-xs font-mono text-slate-300 overflow-auto custom-scrollbar leading-relaxed whitespace-pre-wrap">
                       {rules || "// Configure settings on the left and click Regenerate to create your agent rules."}
                   </pre>
               </div>
           </div>
       </div>
 
-      <div className="text-center mt-8">
+      <div className="flex-shrink-0 pt-4 flex justify-end">
         <button
           onClick={onContinue}
-          className="px-8 py-3 bg-brand-secondary text-white font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105"
+          className="px-6 py-2 bg-white/5 hover:bg-brand-primary text-white text-xs font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
         >
-          Finalize Plan & Tasks
+          <span>Next: Project Plan</span>
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
         </button>
       </div>
     </div>

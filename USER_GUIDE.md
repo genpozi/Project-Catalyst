@@ -10,7 +10,12 @@
 *   Click the **Login** button in the header to sign in via Email (Magic Link).
 *   **Benefits:** Sync, Backup, and Marketplace access.
 
-### 2. The Edge Runtime (Live Coding)
+### 2. Choosing a Template
+Start fast with **Core Blueprints** (SaaS, E-commerce) or **Bespoke Trends** (Personal OS, Interactive Decks).
+- **Core:** Best for scalable, multi-user software.
+- **Bespoke:** Best for high-impact, personal, or marketing sites.
+
+### 3. The Edge Runtime (Live Coding)
 0relai includes a full Node.js environment in the browser.
 1.  Click the **⚡** (Lightning Bolt) icon in the bottom bar or press `Cmd+J`.
 2.  **Boot:** Click "Boot Container". This mounts your project files into a virtual machine.

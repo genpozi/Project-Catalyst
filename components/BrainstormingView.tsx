@@ -21,7 +21,6 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
     onUpdate({ ...data, [field]: value });
   };
 
-  // --- Handlers for Arrays (USPs, Questions, Features) ---
   const handleArrayChange = (field: 'usps' | 'questions' | 'features', index: number, value: string) => {
       const newArray = [...data[field]];
       newArray[index] = value;
@@ -38,7 +37,6 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
       handleUpdate(field, newArray);
   };
 
-  // --- Handlers for Personas ---
   const handlePersonaChange = (index: number, field: keyof Persona, value: string) => {
     const newPersonas = [...data.personas];
     if (field !== 'painPoints') {
@@ -63,7 +61,6 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
       handleUpdate('personas', newPersonas);
   };
 
-  // --- Handlers for Journeys ---
   const handleJourneyUpdate = (index: number, updatedJourney: UserJourney) => {
       const newJourneys = [...(data.userJourneys || [])];
       newJourneys[index] = updatedJourney;
@@ -88,54 +85,56 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
   };
 
   return (
-    <div className="animate-slide-in-up">
-      <h2 className="text-2xl sm:text-3xl font-bold text-brand-text mb-2 text-center">Strategic Analysis</h2>
-      <p className="text-center text-blue-200 mb-6 max-w-2xl mx-auto">
-        Review and edit the strategic foundation. This context drives all future technical decisions.
-      </p>
+    <div className="h-full flex flex-col animate-fade-in space-y-4">
+      
+      {/* Header / Refine Bar */}
+      <div className="flex flex-col gap-4 flex-shrink-0">
+          <div className="flex justify-between items-center">
+              <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Strategic Analysis</h2>
+                  <p className="text-xs text-glass-text-secondary">Project foundation and user definition.</p>
+              </div>
+              <div className="flex bg-black/20 p-1 rounded-lg border border-white/5">
+                  <button 
+                      onClick={() => setActiveTab('overview')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${activeTab === 'overview' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+                  >
+                      Overview
+                  </button>
+                  <button 
+                      onClick={() => setActiveTab('personas')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${activeTab === 'personas' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+                  >
+                      Personas
+                  </button>
+                  <button 
+                      onClick={() => setActiveTab('journeys')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded transition-all ${activeTab === 'journeys' ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+                  >
+                      User Journeys
+                  </button>
+              </div>
+          </div>
 
-      {onRefine && (
-        <div className="max-w-3xl mx-auto mb-6">
+          {onRefine && (
             <RefineBar 
                 onRefine={onRefine} 
                 isRefining={isRefining} 
-                placeholder="e.g. 'Add a persona for an Administrator', 'Make the user journey focus on onboarding'" 
+                placeholder="e.g. 'Add a persona for an Administrator', 'Focus on mobile-first features'" 
+                className="w-full"
             />
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex justify-center mb-6">
-        <div className="bg-white/5 p-1 rounded-xl flex gap-1">
-            <button 
-                onClick={() => setActiveTab('overview')}
-                className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'overview' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-            >
-                Overview
-            </button>
-            <button 
-                onClick={() => setActiveTab('personas')}
-                className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'personas' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-            >
-                Personas
-            </button>
-            <button 
-                onClick={() => setActiveTab('journeys')}
-                className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all ${activeTab === 'journeys' ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
-            >
-                User Journeys
-            </button>
-        </div>
+          )}
       </div>
       
-      <div className="min-h-[400px]">
+      {/* Content Area - Scrollable */}
+      <div className="flex-grow overflow-y-auto custom-scrollbar pr-2">
         {activeTab === 'overview' && (
-            <div className="space-y-6 animate-fade-in">
-                {/* Features */}
-                <div className="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-brand-accent">Proposed Core Features</h3>
-                        <button onClick={() => addItem('features')} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-white">+</button>
+            <div className="space-y-6">
+                {/* Features Grid */}
+                <div className="bg-slate-900/50 p-5 rounded-xl border border-white/5">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-bold text-brand-accent uppercase tracking-wider">Core Features</h3>
+                        <button onClick={() => addItem('features')} className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-white border border-white/5">+</button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {data.features.map((feature, idx) => (
@@ -143,11 +142,11 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
                                 <input 
                                     value={feature}
                                     onChange={(e) => handleArrayChange('features', idx, e.target.value)}
-                                    className="px-3 py-1.5 bg-slate-800 text-blue-200 rounded-full border border-slate-600 text-sm focus:border-brand-secondary focus:outline-none w-48 sm:w-auto transition-all"
+                                    className="px-3 py-1.5 bg-black/20 text-white rounded-lg border border-white/10 text-xs focus:border-brand-secondary focus:outline-none w-48 transition-all hover:bg-black/30"
                                 />
                                 <button 
                                     onClick={() => removeItem('features', idx)}
-                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                                 >
                                     ×
                                 </button>
@@ -158,46 +157,46 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* USPs */}
-                    <div className="bg-slate-800/50 p-6 rounded-lg ring-1 ring-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-brand-secondary flex items-center gap-2">
-                                <span>✨</span> Unique Selling Propositions
+                    <div className="bg-slate-900/50 p-5 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-bold text-brand-secondary uppercase tracking-wider flex items-center gap-2">
+                                <span>✨</span> USPs
                             </h3>
-                            <button onClick={() => addItem('usps')} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-white">+</button>
+                            <button onClick={() => addItem('usps')} className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-white border border-white/5">+</button>
                         </div>
-                        <ul className="space-y-3">
+                        <ul className="space-y-2">
                             {data.usps.map((usp, idx) => (
                                 <li key={idx} className="flex items-center gap-2 group">
-                                    <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
                                     <input 
                                         value={usp}
                                         onChange={(e) => handleArrayChange('usps', idx, e.target.value)}
-                                        className="bg-transparent border-b border-transparent hover:border-slate-600 focus:border-brand-accent focus:outline-none w-full text-blue-100 py-1"
+                                        className="bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-accent focus:outline-none w-full text-slate-300 text-xs py-1"
                                     />
-                                    <button onClick={() => removeItem('usps', idx)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                                    <button onClick={() => removeItem('usps', idx)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity px-1">×</button>
                                 </li>
                             ))}
                         </ul>
                     </div>
 
                     {/* Questions */}
-                    <div className="bg-slate-800/50 p-6 rounded-lg ring-1 ring-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-brand-accent flex items-center gap-2">
+                    <div className="bg-slate-900/50 p-5 rounded-xl border border-white/5">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-sm font-bold text-brand-accent uppercase tracking-wider flex items-center gap-2">
                                 <span>❓</span> Critical Questions
                             </h3>
-                            <button onClick={() => addItem('questions')} className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-white">+</button>
+                            <button onClick={() => addItem('questions')} className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-white border border-white/5">+</button>
                         </div>
-                        <ul className="space-y-3">
+                        <ul className="space-y-2">
                             {data.questions.map((q, idx) => (
                                 <li key={idx} className="flex items-center gap-2 group">
-                                    <span className="text-slate-500 font-bold">{idx + 1}.</span>
+                                    <span className="text-slate-500 font-bold text-xs">{idx + 1}.</span>
                                     <input 
                                         value={q}
                                         onChange={(e) => handleArrayChange('questions', idx, e.target.value)}
-                                        className="bg-transparent border-b border-transparent hover:border-slate-600 focus:border-brand-accent focus:outline-none w-full text-slate-300 italic py-1"
+                                        className="bg-transparent border-b border-transparent hover:border-white/10 focus:border-brand-accent focus:outline-none w-full text-slate-300 italic text-xs py-1"
                                     />
-                                    <button onClick={() => removeItem('questions', idx)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                                    <button onClick={() => removeItem('questions', idx)} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity px-1">×</button>
                                 </li>
                             ))}
                         </ul>
@@ -207,47 +206,50 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
         )}
 
         {activeTab === 'personas' && (
-            <div className="animate-fade-in">
-                <div className="flex justify-between items-center mb-4 pl-2 border-l-4 border-brand-primary">
-                    <h3 className="text-xl font-bold text-white">Target Audience Personas</h3>
-                    <button onClick={addPersona} className="text-sm bg-brand-primary hover:bg-blue-600 px-3 py-1 rounded text-white">Add Persona</button>
+            <div className="space-y-4">
+                <div className="flex justify-end">
+                    <button onClick={addPersona} className="text-xs bg-brand-primary hover:bg-blue-600 px-3 py-1.5 rounded-lg text-white font-bold flex items-center gap-2 shadow-lg">
+                        <span>+</span> Add Persona
+                    </button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {data.personas.map((persona, idx) => (
-                        <div key={idx} className="bg-slate-700/30 p-5 rounded-lg border border-slate-600 hover:border-brand-accent transition-colors relative group">
+                        <div key={idx} className="bg-slate-900/50 p-4 rounded-xl border border-white/5 hover:border-brand-accent/50 transition-all relative group flex flex-col">
                             <button 
                                 onClick={() => removePersona(idx)}
-                                className="absolute top-2 right-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-2 right-2 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
 
                             <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white text-lg flex-shrink-0">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 border border-white/10 flex items-center justify-center font-bold text-white text-xs flex-shrink-0">
                                     {persona.role.charAt(0)}
                                 </div>
                                 <input 
                                     value={persona.role}
                                     onChange={(e) => handlePersonaChange(idx, 'role', e.target.value)}
-                                    className="font-bold text-lg text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-brand-accent focus:outline-none w-full"
+                                    className="font-bold text-sm text-white bg-transparent border-b border-transparent hover:border-slate-500 focus:border-brand-accent focus:outline-none w-full"
                                 />
                             </div>
+                            
                             <textarea 
                                 value={persona.description}
                                 onChange={(e) => handlePersonaChange(idx, 'description', e.target.value)}
-                                className="text-sm text-slate-300 mb-4 w-full bg-transparent border border-transparent hover:border-slate-600 focus:border-brand-accent focus:outline-none rounded p-1 h-20 resize-none"
+                                className="text-xs text-slate-400 mb-4 w-full bg-transparent border border-transparent hover:border-white/10 focus:border-brand-accent focus:outline-none rounded p-1 h-16 resize-none leading-relaxed"
                             />
-                            <div>
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pain Points</span>
-                                <ul className="mt-2 space-y-1">
+                            
+                            <div className="mt-auto bg-black/20 p-2 rounded-lg">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pain Points</span>
+                                <ul className="space-y-1">
                                     {persona.painPoints.map((pp, i) => (
                                         <li key={i} className="flex items-center gap-1">
-                                            <span className="text-red-400">•</span>
+                                            <span className="text-red-400 text-[8px]">•</span>
                                             <input 
                                                 value={pp}
                                                 onChange={(e) => handlePainPointChange(idx, i, e.target.value)}
-                                                className="text-xs text-red-200 bg-red-900/20 px-2 py-1 rounded w-full border border-transparent hover:border-red-800 focus:outline-none focus:border-red-500"
+                                                className="text-[10px] text-red-200 bg-transparent w-full border-b border-transparent hover:border-red-900/50 focus:border-red-500 focus:outline-none"
                                             />
                                         </li>
                                     ))}
@@ -260,23 +262,20 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
         )}
 
         {activeTab === 'journeys' && (
-            <div className="animate-fade-in space-y-8">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <span>🗺️</span> User Flow Builder
-                    </h3>
+            <div className="space-y-4">
+                <div className="flex justify-end">
                     <button 
                         onClick={addJourney}
-                        className="bg-brand-primary hover:bg-brand-secondary text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg"
+                        className="bg-brand-primary hover:bg-brand-secondary text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-lg"
                     >
                         + Add Journey
                     </button>
                 </div>
 
                 {!data.userJourneys || data.userJourneys.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500 bg-slate-900/30 rounded-xl border border-dashed border-slate-700">
-                        <div className="text-4xl mb-3">📍</div>
-                        <p>No user journeys defined yet. Create one to map out the user experience.</p>
+                    <div className="text-center py-12 text-slate-500 bg-slate-900/30 rounded-xl border border-dashed border-white/5">
+                        <div className="text-4xl mb-3 opacity-30">📍</div>
+                        <p className="text-xs">No user journeys defined yet.</p>
                     </div>
                 ) : (
                     data.userJourneys.map((journey, idx) => (
@@ -292,12 +291,14 @@ const BrainstormingView: React.FC<BrainstormingViewProps> = ({ data, onUpdate, o
         )}
       </div>
 
-      <div className="text-center mt-8">
+      {/* Footer Action */}
+      <div className="pt-2 border-t border-white/5 flex justify-end flex-shrink-0">
         <button
           onClick={onContinue}
-          className="px-8 py-3 bg-brand-secondary text-white font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105"
+          className="px-6 py-2 bg-white/5 hover:bg-brand-primary text-white text-xs font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
         >
-          Begin Technical Research
+          <span>Next: Research</span>
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
         </button>
       </div>
     </div>

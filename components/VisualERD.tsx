@@ -16,6 +16,7 @@ import { SchemaData, SchemaTable, SchemaColumn } from '../types';
 import { generateMermaidFromTables } from '../utils/mermaid';
 import { GeminiService } from '../GeminiService';
 import { exportAsImage } from '../utils/imageExporter';
+import { useProject } from '../ProjectContext'; // Import context
 
 interface VisualERDProps {
   schema: SchemaData;
@@ -97,6 +98,7 @@ const nodeTypes = {
 const VisualERD: React.FC<VisualERDProps> = ({ schema, onUpdate, readOnly = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gemini = useMemo(() => new GeminiService(), []);
+  const { dispatch } = useProject(); // Added Context
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
 
@@ -146,6 +148,15 @@ const VisualERD: React.FC<VisualERDProps> = ({ schema, onUpdate, readOnly = fals
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // --- Handle Selection ---
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+      dispatch({ type: 'SET_SELECTED_NODE', payload: node.id });
+  }, [dispatch]);
+
+  const onPaneClick = useCallback(() => {
+      dispatch({ type: 'SET_SELECTED_NODE', payload: undefined });
+  }, [dispatch]);
 
   // --- Sync Props to State (Handle External Updates e.g. AI) ---
   useEffect(() => {
@@ -361,6 +372,8 @@ const VisualERD: React.FC<VisualERDProps> = ({ schema, onUpdate, readOnly = fals
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
             nodeTypes={nodeTypes}
             fitView
             className="bg-[#0b0e14]"

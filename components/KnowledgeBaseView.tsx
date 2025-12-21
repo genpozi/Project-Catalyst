@@ -14,8 +14,9 @@ const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ projectData, onCo
   const [content, setContent] = useState('');
   const [type, setType] = useState<'text' | 'code' | 'policy'>('text');
   const [tags, setTags] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-  const docRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  
+  // Selection
+  const selectedDoc = projectData.knowledgeBase?.find(d => d.id === state.ui.selectedDocId);
 
   const handleAddDoc = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,174 +35,169 @@ const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ projectData, onCo
     setTitle('');
     setContent('');
     setTags('');
-    setIsAdding(false);
   };
 
   const handleDelete = (id: string) => {
-      if(window.confirm("Remove this document from the AI's context?")) {
+      if(window.confirm("Remove this document?")) {
           dispatch({ type: 'DELETE_KNOWLEDGE_DOC', payload: id });
+          if (state.ui.selectedDocId === id) dispatch({ type: 'SET_SELECTED_DOC', payload: undefined });
       }
   };
 
   const handleSelectDoc = (id: string) => {
-      if (state.ui.selectedDocId !== id) {
-          dispatch({ type: 'SET_SELECTED_DOC', payload: id });
-      }
+      dispatch({ type: 'SET_SELECTED_DOC', payload: id });
   };
 
-  // Scroll to selected doc
-  useEffect(() => {
-      if (state.ui.selectedDocId) {
-          const el = docRefs.current[state.ui.selectedDocId];
-          if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              // Flash effect handled by CSS classes based on state
-          }
-      }
-  }, [state.ui.selectedDocId]);
-
   return (
-    <div className="animate-slide-in-up">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold text-brand-text mb-2">Memory Palace (Context Injection)</h2>
-        <p className="text-blue-200 max-w-2xl mx-auto">
-            Upload your company standards, legacy API docs, or preferred coding patterns. 
-            The Architect will reference these "Memories" when generating your blueprint.
-        </p>
+    <div className="h-full flex flex-col animate-fade-in">
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <div>
+            <h2 className="text-xl font-bold text-white">Knowledge Base</h2>
+            <p className="text-xs text-glass-text-secondary">Context injection for the Architect AI.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left: Add Form */}
-        <div className="lg:col-span-1">
-            <div className="bg-slate-800/50 p-6 rounded-xl border border-white/5 sticky top-6">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    <span>🧠</span> Add Knowledge
-                </h3>
-                
-                <form onSubmit={handleAddDoc} className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Title</label>
-                        <input 
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            className="w-full glass-input rounded-lg px-3 py-2 text-sm"
-                            placeholder="e.g. 'Auth Guidelines'"
-                        />
-                    </div>
-                    
-                    <div>
-                        <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Type</label>
-                        <div className="flex bg-black/20 p-1 rounded-lg">
-                            {(['text', 'code', 'policy'] as const).map(t => (
-                                <button
-                                    key={t}
-                                    type="button"
-                                    onClick={() => setType(t)}
-                                    className={`flex-1 py-1.5 text-xs font-bold rounded capitalize transition-all ${type === t ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
-                                >
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Content / Snippet</label>
-                        <textarea 
-                            value={content}
-                            onChange={e => setContent(e.target.value)}
-                            className="w-full glass-input rounded-lg px-3 py-2 text-sm min-h-[150px] font-mono"
-                            placeholder="Paste text, JSON schemas, or policy rules here..."
-                        />
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Tags (comma separated)</label>
-                        <input 
-                            value={tags}
-                            onChange={e => setTags(e.target.value)}
-                            className="w-full glass-input rounded-lg px-3 py-2 text-sm"
-                            placeholder="e.g. security, frontend, legacy"
-                        />
-                    </div>
-
-                    <button 
-                        type="submit"
-                        disabled={!title || !content}
-                        className="w-full py-2 bg-brand-secondary hover:bg-brand-primary text-white font-bold rounded-lg transition-all disabled:opacity-50"
-                    >
-                        Save to Memory
-                    </button>
-                </form>
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+        
+        {/* Left: Document List */}
+        <div className="lg:col-span-1 flex flex-col bg-[#0b0e14] border border-white/5 rounded-xl overflow-hidden">
+            <div className="p-3 border-b border-white/5 bg-slate-900/50 flex justify-between items-center">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">Documents</span>
+                <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-glass-text-secondary">{projectData.knowledgeBase?.length || 0}</span>
             </div>
-        </div>
-
-        {/* Right: Library */}
-        <div className="lg:col-span-2">
-            <h3 className="text-lg font-bold text-white mb-4">Active Context ({projectData.knowledgeBase?.length || 0})</h3>
             
-            {!projectData.knowledgeBase || projectData.knowledgeBase.length === 0 ? (
-                <div className="text-center py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
-                    <span className="text-4xl block mb-3 opacity-50">📚</span>
-                    <p className="text-glass-text-secondary text-sm">No documents added yet.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {projectData.knowledgeBase.map(doc => (
+            <div className="flex-grow overflow-y-auto custom-scrollbar p-2 space-y-2">
+                {!projectData.knowledgeBase || projectData.knowledgeBase.length === 0 ? (
+                    <div className="text-center py-10 opacity-50 text-xs">No documents.</div>
+                ) : (
+                    projectData.knowledgeBase.map(doc => (
                         <div 
-                            key={doc.id} 
-                            ref={el => { docRefs.current[doc.id] = el; }}
+                            key={doc.id}
                             onClick={() => handleSelectDoc(doc.id)}
-                            className={`bg-brand-panel border p-4 rounded-xl group transition-all flex flex-col cursor-pointer ${
+                            className={`p-3 rounded-lg cursor-pointer border transition-all group ${
                                 state.ui.selectedDocId === doc.id 
-                                ? 'border-brand-accent/80 ring-2 ring-brand-accent/20' 
-                                : 'border-glass-border hover:border-brand-accent/50'
+                                ? 'bg-brand-primary/10 border-brand-primary/50' 
+                                : 'bg-white/5 border-transparent hover:bg-white/10'
                             }`}
                         >
-                            <div className="flex justify-between items-start mb-2">
+                            <div className="flex justify-between items-start mb-1">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-lg">
+                                    <span className="text-base">
                                         {doc.type === 'code' ? '💻' : doc.type === 'policy' ? '🛡️' : '📄'}
                                     </span>
-                                    <h4 className="font-bold text-white text-sm">{doc.title}</h4>
+                                    <span className={`text-sm font-bold truncate ${state.ui.selectedDocId === doc.id ? 'text-brand-secondary' : 'text-slate-300'}`}>
+                                        {doc.title}
+                                    </span>
                                 </div>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleDelete(doc.id); }}
-                                    className="text-glass-text-secondary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    ✕
                                 </button>
                             </div>
-                            
-                            <div className="flex-grow bg-black/30 rounded p-2 mb-3 overflow-hidden relative">
-                                <p className="text-xs text-slate-400 font-mono line-clamp-4 whitespace-pre-wrap">
-                                    {doc.content}
-                                </p>
-                                <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-black/30 to-transparent"></div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-1 mt-auto">
+                            <div className="flex flex-wrap gap-1 mt-2">
                                 {doc.tags.map(tag => (
-                                    <span key={tag} className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded text-glass-text-secondary border border-white/5">
-                                        #{tag}
-                                    </span>
+                                    <span key={tag} className="text-[9px] bg-black/30 text-glass-text-secondary px-1.5 py-0.5 rounded">#{tag}</span>
                                 ))}
                             </div>
                         </div>
-                    ))}
+                    ))
+                )}
+            </div>
+        </div>
+
+        {/* Right: Content or Add Form */}
+        <div className="lg:col-span-2 flex flex-col bg-[#0b0e14] border border-white/5 rounded-xl overflow-hidden">
+            {selectedDoc ? (
+                <>
+                    <div className="p-4 border-b border-white/5 bg-slate-900/50 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl">{selectedDoc.type === 'code' ? '💻' : selectedDoc.type === 'policy' ? '🛡️' : '📄'}</span>
+                            <h3 className="font-bold text-white">{selectedDoc.title}</h3>
+                        </div>
+                        <button 
+                            onClick={() => dispatch({ type: 'SET_SELECTED_DOC', payload: undefined })}
+                            className="text-xs bg-brand-primary hover:bg-brand-secondary px-3 py-1.5 rounded text-white transition-colors"
+                        >
+                            + New Doc
+                        </button>
+                    </div>
+                    <div className="flex-grow p-6 overflow-y-auto custom-scrollbar">
+                        <pre className="text-sm font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            {selectedDoc.content}
+                        </pre>
+                    </div>
+                    <div className="p-2 border-t border-white/5 bg-black/20 text-[10px] text-slate-500 text-right px-4">
+                        ID: {selectedDoc.id} • Added: {new Date(selectedDoc.addedAt).toLocaleDateString()}
+                    </div>
+                </>
+            ) : (
+                <div className="flex flex-col h-full p-6">
+                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                        <span>➕</span> Add New Knowledge
+                    </h3>
+                    <form onSubmit={handleAddDoc} className="space-y-4 flex-grow flex flex-col">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Title</label>
+                                <input 
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    className="w-full glass-input rounded-lg px-3 py-2 text-sm"
+                                    placeholder="e.g. 'Auth Guidelines'"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Type</label>
+                                <div className="flex bg-black/20 p-1 rounded-lg">
+                                    {(['text', 'code', 'policy'] as const).map(t => (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            onClick={() => setType(t)}
+                                            className={`flex-1 py-1.5 text-xs font-bold rounded capitalize transition-all ${type === t ? 'bg-brand-primary text-white shadow' : 'text-glass-text-secondary hover:text-white'}`}
+                                        >
+                                            {t}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-grow flex flex-col">
+                            <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Content</label>
+                            <textarea 
+                                value={content}
+                                onChange={e => setContent(e.target.value)}
+                                className="w-full flex-grow glass-input rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                                placeholder="Paste content here..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-glass-text-secondary uppercase block mb-1">Tags</label>
+                            <input 
+                                value={tags}
+                                onChange={e => setTags(e.target.value)}
+                                className="w-full glass-input rounded-lg px-3 py-2 text-sm"
+                                placeholder="comma, separated, tags"
+                            />
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <button 
+                                type="submit"
+                                disabled={!title || !content}
+                                className="px-6 py-2 bg-brand-primary hover:bg-brand-secondary text-white font-bold rounded-lg transition-all disabled:opacity-50"
+                            >
+                                Save Document
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
         </div>
-      </div>
-
-      <div className="text-center mt-10">
-        <button
-          onClick={onContinue}
-          className="px-8 py-3 bg-brand-secondary text-white font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105 flex items-center gap-2 mx-auto"
-        >
-          <span>Continue with Context</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-        </button>
       </div>
     </div>
   );

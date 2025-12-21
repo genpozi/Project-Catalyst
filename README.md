@@ -26,6 +26,7 @@
 - **Diagram Orchestration:** AI-powered auto-layout for complex Architecture and ERD graphs.
 - **Visual Editors:** Interactive builders for Tech Stack, Database Schema, and Gantt Charts.
 - **Export Studio:** Download high-resolution PNGs of your diagrams for reports.
+- **Smart Templates:** Pre-configured blueprints for 2025 trends (Bento Grids, 3D Microsites) and Enterprise standards (SaaS, CRM).
 
 ### 🛡️ Security & Enterprise
 - **Compliance Engine:** Generate audit-ready checklists for SOC2, HIPAA, and GDPR.

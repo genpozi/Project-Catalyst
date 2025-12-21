@@ -11,37 +11,80 @@ interface IdeaInputProps {
 }
 
 const STARTER_TEMPLATES = [
+    // --- CORE SOFTWARE PATTERNS ---
     {
-        name: "Micro-SaaS Starter",
-        icon: "🚀",
-        type: "Web Application",
-        category: "SaaS",
-        idea: "A subscription-based SaaS platform for niche project management. Includes team collaboration, recurring billing via Stripe, and an admin dashboard.",
-        constraints: "Next.js 14, Tailwind CSS, Supabase (Auth/DB), Stripe, Shadcn UI"
+        name: "Enterprise SaaS Starter",
+        icon: "🏢",
+        type: "SaaS Application",
+        category: "Core",
+        idea: "A production-ready, multi-tenant SaaS platform designed for scalability. Features include: Secure Authentication (Magic Links/SSO), Organization/Team management with granular RBAC, Usage-based Subscription Billing via Stripe, and a responsive Analytics Dashboard. The architecture must prioritize security and data isolation.",
+        constraints: "Framework: Next.js (App Router). Database: Supabase (PostgreSQL + RLS). State: TanStack Query. UI: Tailwind CSS + Shadcn UI. Auth: Supabase Auth. Payments: Stripe SDK. Validation: Zod. Testing: Vitest."
     },
     {
-        name: "E-Commerce Headless",
+        name: "Modern E-Commerce",
         icon: "🛍️",
-        type: "Web Application",
-        category: "Retail",
-        idea: "A modern, high-performance headless e-commerce store. Features include product search, shopping cart, checkout, and order history.",
-        constraints: "Remix, Shopify Storefront API (or MedusaJS), Tailwind CSS, Redis for caching"
+        type: "E-Commerce",
+        category: "Core",
+        idea: "A high-performance headless commerce storefront. Includes faceted product search/filtering, rich product detail pages with image galleries, a persistent shopping cart, and a secure checkout flow. Includes a separate Admin Panel for inventory, order management, and customer CRM.",
+        constraints: "Framework: Next.js (SSR). Data: Shopify Storefront API (or PostgreSQL/Prisma). State: Zustand (Cart). UI: Tailwind CSS + Headless UI. Animation: Framer Motion. SEO: Next-SEO. Payment: Stripe Checkout."
     },
     {
-        name: "AI Content Generator",
-        icon: "✨",
-        type: "Web Application",
-        category: "AI",
-        idea: "An application that uses LLMs to generate marketing copy and blog posts. Includes a credit system, rich text editor, and history.",
-        constraints: "React, Node.js/Express, OpenAI API, PostgreSQL, Docker"
+        name: "Internal Tool / CRM",
+        icon: "🔨",
+        type: "Internal Tool",
+        category: "Core",
+        idea: "A high-density data management tool for internal business operations. Features complex data tables with server-side sorting/filtering, Kanban pipelines for workflow status, comprehensive activity logging, and role-based views (Admin vs User). Focus on information density and keyboard accessibility.",
+        constraints: "Framework: React (Vite). Data Table: TanStack Table (v8). State: TanStack Query. Charts: Recharts or Tremor. Backend: Node.js/Express or Supabase. Styles: Tailwind CSS. Focus on keyboard navigation/shortcuts."
     },
     {
-        name: "Social Hiker App",
-        icon: "🏔️",
+        name: "Cross-Platform Mobile",
+        icon: "📱",
         type: "Mobile App",
-        category: "Social",
-        idea: "A mobile social network for hikers to share trails, photos, and organize meetups. Includes geolocation, maps, and real-time chat.",
-        constraints: "React Native (Expo), Firebase, Google Maps API"
+        category: "Core",
+        idea: "A social or utility mobile application with a native feel. Features include a bottom tab navigation layout, user profiles with media uploads, a real-time feed, camera access, and push notifications. Designed for 'Offline-First' usage.",
+        constraints: "Framework: React Native (Expo Router). Backend: Firebase (Auth + Firestore + Storage) or Supabase. Styling: NativeWind (Tailwind). State: Legend-State or Zustand. Offline: TanStack Query (persist)."
+    },
+
+    // --- BESPOKE & 2025 TRENDS ---
+    {
+        name: "Personal 'Bento' OS",
+        icon: "🍱",
+        type: "Personal Dashboard",
+        category: "Bespoke",
+        idea: "A highly aesthetic 'Life OS' dashboard using a Bento Grid layout. It aggregates disparate data streams into a unified view. Widgets include: A Pomodoro timer, Spotify 'Now Playing' controller, a daily To-Do list, a crypto/stock ticker, and a local weather card. Supports drag-and-drop widget arrangement.",
+        constraints: "Framework: React (Vite). Layout: CSS Grid (Bento pattern). DnD: dnd-kit or react-grid-layout. State: Zustand + LocalStorage (persistence). UI: Glassmorphism, Dark Mode only. Icons: Lucide React."
+    },
+    {
+        name: "Interactive Pitch Deck",
+        icon: "📊",
+        type: "Presentation Web App",
+        category: "Bespoke",
+        idea: "A keyboard-navigable, web-based slide deck that replaces PowerPoint. Features smooth page transitions, 'Live Code' blocks that are editable/runnable, interactive data charts, and 3D product showcases. It must be responsive and shareable via URL.",
+        constraints: "Framework: React. Animation: Framer Motion (AnimatePresence for slides). Charts: Recharts (Interactive). Code: Prism.js/SyntaxHighlighter. 3D: Spline or React Three Fiber. No backend required (URL state)."
+    },
+    {
+        name: "Hype Microsite",
+        icon: "✨",
+        type: "Landing Page",
+        category: "Bespoke",
+        idea: "A high-impact, single-page 'Scrollytelling' experience for a product launch. Features a sticky 3D model or video background that evolves as the user scrolls. Includes a 'Join Waitlist' form that generates a custom 'Ticket' image for the user to share on social media.",
+        constraints: "Framework: React or Next.js. Animation: GSAP (ScrollTrigger) or Lenis (Smooth Scroll). 3D: React Three Fiber (Drei). Image Gen: html-to-image. Backend: Supabase (Waitlist). Style: Neo-Brutalism or Lux."
+    },
+    {
+        name: "Digital Garden",
+        icon: "🌿",
+        type: "Knowledge Base",
+        category: "Bespoke",
+        idea: "A non-linear personal wiki and blog. Unlike a standard blog, it features bidirectional linking ([[link]]), hover previews of linked notes, and a visual 'Graph View' showing how thoughts connect. Emphasizes typography, readability, and 'seed/sprout/evergreen' content status.",
+        constraints: "Framework: Next.js (SSG). Content: MDX. Graph: react-force-graph or D3.js. Styling: Tailwind Typography. Features: Local Search (Cmd+K), Backlinks calculation."
+    },
+    {
+        name: "AI Wrapper SaaS",
+        icon: "🤖",
+        type: "SaaS Application",
+        category: "Bespoke",
+        idea: "A specialized AI tool wrapping a specific prompt workflow (e.g., 'Legal Contract Analyzer'). Features a clean input form, streaming text response, structured JSON extraction from the LLM, and a history of past generations. Includes credit/token usage tracking.",
+        constraints: "Framework: Next.js. AI: Vercel AI SDK (useChat/useCompletion). Streaming: Edge Runtime. Database: Supabase (Auth + History). UI: Radix UI primitives. Styling: Tailwind."
     }
 ];
 
@@ -93,6 +136,7 @@ const Dashboard: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
   const { state, dispatch } = useProject();
   const [activeTab, setActiveTab] = useState<'overview' | 'new' | 'templates' | 'marketplace'>('overview');
   const [selectedMarketplaceItem, setSelectedMarketplaceItem] = useState<ProjectData | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
   // Form State
   const [idea, setIdea] = useState('');
@@ -430,12 +474,12 @@ const Dashboard: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
                                             className="w-full h-full bg-transparent text-white px-4 py-3 rounded-xl focus:outline-none focus:bg-white/5 appearance-none text-lg font-medium cursor-pointer"
                                         >
                                             <option className="bg-slate-900">Web Application</option>
+                                            <option className="bg-slate-900">Personal Dashboard</option>
+                                            <option className="bg-slate-900">Interactive Presentation</option>
+                                            <option className="bg-slate-900">Microsite / Landing Page</option>
                                             <option className="bg-slate-900">Mobile App (iOS/Android)</option>
                                             <option className="bg-slate-900">API / Backend Service</option>
-                                            <option className="bg-slate-900">CLI Tool</option>
-                                            <option className="bg-slate-900">Desktop Application</option>
                                             <option className="bg-slate-900">Game</option>
-                                            <option className="bg-slate-900">AI/ML Model</option>
                                         </select>
                                     </div>
                                 </div>
@@ -525,6 +569,18 @@ const Dashboard: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
             {/* TEMPLATES TAB */}
             {activeTab === 'templates' && (
                 <div className="animate-fade-in">
+                    <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                        {['All', 'Core', 'Bespoke'].map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-4 py-1.5 text-xs font-bold rounded-full border transition-all ${selectedCategory === cat ? 'bg-white text-black border-white' : 'bg-transparent text-slate-400 border-slate-700 hover:border-white hover:text-white'}`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* New Template Card */}
                         <div className="bg-slate-900/30 border border-white/5 rounded-xl p-5 border-dashed flex flex-col items-center justify-center text-center">
@@ -547,13 +603,18 @@ const Dashboard: React.FC<IdeaInputProps> = ({ onSubmit, onAnalyzeAudio, isAnaly
                         ))}
 
                         {/* System Templates */}
-                        {STARTER_TEMPLATES.map((t, idx) => (
-                            <div key={idx} onClick={() => handleUseTemplate(t)} className="bg-[#0f172a] border border-white/5 rounded-xl p-5 hover:bg-white/5 cursor-pointer group">
-                                <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">{t.icon}</div>
-                                <h3 className="font-bold text-white text-lg mb-1">{t.name}</h3>
-                                <p className="text-xs text-slate-400 line-clamp-2 mb-4">{t.idea}</p>
+                        {STARTER_TEMPLATES
+                            .filter(t => selectedCategory === 'All' || t.category === selectedCategory)
+                            .map((t, idx) => (
+                            <div key={idx} onClick={() => handleUseTemplate(t)} className="bg-[#0f172a] border border-white/5 rounded-xl p-5 hover:bg-white/5 cursor-pointer group flex flex-col h-full">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="text-3xl group-hover:scale-110 transition-transform origin-left">{t.icon}</div>
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-glass-text-secondary bg-white/5 px-2 py-1 rounded">{t.category}</span>
+                                </div>
+                                <h3 className="font-bold text-white text-lg mb-2">{t.name}</h3>
+                                <p className="text-xs text-slate-400 line-clamp-3 mb-4 flex-grow">{t.idea}</p>
                                 <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-auto">
-                                    <span className="text-[10px] text-slate-500 uppercase tracking-wider">{t.category}</span>
+                                    <span className="text-[10px] text-slate-500">{t.type}</span>
                                     <span className="text-xs text-brand-secondary group-hover:translate-x-1 transition-transform">Start →</span>
                                 </div>
                             </div>

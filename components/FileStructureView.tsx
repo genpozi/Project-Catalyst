@@ -58,16 +58,16 @@ const FileItem: React.FC<{
       <div 
         onClick={handleToggle}
         className={`group flex items-center justify-between py-1 px-2 rounded cursor-pointer transition-colors ${
-            isSelected ? 'bg-brand-secondary text-white' : 'hover:bg-slate-700/50 text-slate-300'
+            isSelected ? 'bg-brand-primary text-white' : 'hover:bg-white/5 text-slate-400 hover:text-slate-200'
         }`}
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
+        style={{ paddingLeft: `${level * 12 + 8}px` }}
         id={`file-node-${currentPath.replace(/\//g, '-')}`}
       >
         <div className="flex items-center gap-2 overflow-hidden">
-            <span className="opacity-70 text-xs flex-shrink-0">
-            {node.type === 'folder' ? (isOpen ? '📂' : '📁') : (node.content ? '📝' : '📄')}
+            <span className="opacity-70 text-[10px] flex-shrink-0">
+            {node.type === 'folder' ? (isOpen ? '📂' : '📁') : '📄'}
             </span>
-            <span className={`font-mono text-sm truncate ${node.type === 'folder' ? 'font-bold' : ''}`}>
+            <span className={`font-mono text-xs truncate ${node.type === 'folder' ? 'font-bold' : ''}`}>
             {node.name}
             </span>
         </div>
@@ -76,10 +76,10 @@ const FileItem: React.FC<{
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {node.type === 'folder' && (
                     <>
-                        <button onClick={(e) => handleAction(e, 'addFile')} title="Add File" className="p-0.5 hover:bg-slate-600 rounded text-slate-400 hover:text-white">
+                        <button onClick={(e) => handleAction(e, 'addFile')} title="Add File" className="p-0.5 hover:bg-white/10 rounded text-slate-400 hover:text-white">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         </button>
-                        <button onClick={(e) => handleAction(e, 'addFolder')} title="Add Folder" className="p-0.5 hover:bg-slate-600 rounded text-slate-400 hover:text-white">
+                        <button onClick={(e) => handleAction(e, 'addFolder')} title="Add Folder" className="p-0.5 hover:bg-white/10 rounded text-slate-400 hover:text-white">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
                         </button>
                     </>
@@ -314,36 +314,37 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
   const shouldForceOpen = !!state.ui.selectedFilePath;
 
   return (
-    <div className="animate-slide-in-up h-full flex flex-col">
-      {!hideActions && (
-          <>
-            <h2 className="text-2xl sm:text-3xl font-bold text-brand-text mb-2 text-center">Project File Structure</h2>
-            <p className="text-center text-blue-200 mb-8 max-w-3xl mx-auto">
-                Define the codebase structure and preview generated code for critical files.
-            </p>
-          </>
-      )}
+    <div className="animate-fade-in flex flex-col h-full overflow-hidden">
+      
+      {/* Header Section */}
+      <div className="flex-shrink-0 mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Code Structure</h2>
+                <p className="text-xs text-glass-text-secondary">Project filesystem and implementation stubs.</p>
+            </div>
+          </div>
 
-      {onRefine && !hideActions && !readOnly && (
-        <div className="max-w-3xl mx-auto mb-8 w-full">
+          {onRefine && !hideActions && !readOnly && (
             <RefineBar 
                 onRefine={onRefine} 
                 isRefining={isRefining} 
                 placeholder="e.g. 'Move utils to the lib folder', 'Add Dockerfile'" 
+                className="mb-2"
             />
-        </div>
-      )}
+          )}
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow min-h-[500px]">
+      <div className="flex-grow min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left: Tree Explorer */}
-        <div className="md:col-span-1 bg-slate-900/50 rounded-lg border border-slate-700 flex flex-col overflow-hidden">
-            <div className="bg-slate-800 px-4 py-2 border-b border-slate-700 flex justify-between items-center">
-                <span className="text-sm font-semibold text-slate-400">EXPLORER</span>
+        <div className="md:col-span-1 bg-slate-900/50 rounded-xl border border-white/5 flex flex-col overflow-hidden">
+            <div className="bg-black/20 px-3 py-2 border-b border-white/5 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-glass-text-secondary uppercase tracking-wider">File Explorer</span>
                 <div className="flex gap-2">
                     {onUpdate && !readOnly && (
                         <button 
                             onClick={handleAddRoot}
-                            className="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+                            className="text-[10px] px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white rounded transition-colors border border-white/10"
                             title="Add Root Item"
                         >
                             +
@@ -353,7 +354,7 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
             </div>
             <div className="p-2 overflow-y-auto flex-grow custom-scrollbar">
                 {structure.length === 0 && (
-                    <div className="text-center text-slate-500 py-4 italic">Empty structure. Add a root item.</div>
+                    <div className="text-center text-slate-500 py-10 text-xs italic">Empty structure. Add a root item.</div>
                 )}
                 {structure.map((node, idx) => (
                     <FileItem 
@@ -373,39 +374,39 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
         </div>
 
         {/* Right: Code Editor / Details Panel */}
-        <div className="md:col-span-2 bg-[#0b0e14] rounded-lg border border-slate-700 flex flex-col overflow-hidden relative shadow-inner">
+        <div className="md:col-span-2 bg-[#0b0e14] rounded-xl border border-white/5 flex flex-col overflow-hidden relative shadow-inner">
             {selectedNode ? (
                 <>
                     <div className="bg-[#151b26] px-4 py-2 border-b border-white/5 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-glass-text-secondary">{selectedNode.type === 'file' ? '📄' : '📂'}</span>
-                            <span className="text-sm font-bold text-white font-mono">{selectedNode.name}</span>
-                            {pendingContent && <span className="text-[10px] bg-yellow-500/20 text-yellow-200 px-2 py-0.5 rounded animate-pulse">Review Mode</span>}
+                            <span className="text-xs font-bold text-white font-mono">{selectedNode.name}</span>
+                            {pendingContent && <span className="text-[9px] bg-yellow-500/20 text-yellow-200 px-2 py-0.5 rounded animate-pulse">Review Mode</span>}
                         </div>
                         <div className="flex gap-2 items-center">
                             {linkedArchitectureNode && (
                                 <button
                                     onClick={() => handleGoToNode(linkedArchitectureNode.id)}
-                                    className="text-[10px] bg-brand-primary/20 hover:bg-brand-primary/40 text-brand-primary px-3 py-1.5 rounded transition-all border border-brand-primary/30 flex items-center gap-1 mr-2"
-                                    title="Go to associated architecture component"
+                                    className="text-[10px] bg-brand-primary/20 hover:bg-brand-primary/40 text-brand-primary px-2 py-1 rounded transition-all border border-brand-primary/30 flex items-center gap-1"
+                                    title="View associated architecture component"
                                 >
-                                    <span>📦</span> View Node
+                                    <span>📦</span> Node
                                 </button>
                             )}
                             {selectedNode.type === 'file' && !readOnly && (
                                 <button 
                                     onClick={handleGeneratePreview}
                                     disabled={isGenerating}
-                                    className="text-xs bg-brand-primary/20 hover:bg-brand-primary/40 text-brand-primary border border-brand-primary/50 px-3 py-1.5 rounded transition-all flex items-center gap-2"
+                                    className="text-[10px] bg-brand-primary/20 hover:bg-brand-primary/40 text-brand-primary border border-brand-primary/50 px-2 py-1 rounded transition-all flex items-center gap-1"
                                 >
-                                    {isGenerating ? <div className="w-3 h-3 border-2 border-brand-primary border-t-transparent rounded-full animate-spin"></div> : '⚡'}
+                                    {isGenerating ? <div className="w-2 h-2 border-2 border-brand-primary border-t-transparent rounded-full animate-spin"></div> : '⚡'}
                                     {editorContent ? 'Regenerate' : 'Generate'}
                                 </button>
                             )}
                             {!readOnly && (
                                 <button 
                                     onClick={handleSaveContent}
-                                    className="text-xs bg-slate-700 hover:bg-white text-slate-300 hover:text-black px-3 py-1.5 rounded transition-all font-bold"
+                                    className="text-[10px] bg-slate-700 hover:bg-white text-slate-300 hover:text-black px-3 py-1 rounded transition-all font-bold"
                                 >
                                     Save
                                 </button>
@@ -415,17 +416,17 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
 
                     {pendingContent && !readOnly && (
                         <div className="bg-yellow-900/20 border-b border-yellow-700/30 px-4 py-2 flex items-center justify-between">
-                            <span className="text-xs text-yellow-200">AI generated new content. Review changes below:</span>
+                            <span className="text-[10px] text-yellow-200">AI generated new content. Review changes below:</span>
                             <div className="flex gap-2">
                                 <button 
                                     onClick={handleDiscardDiff}
-                                    className="px-3 py-1 text-[10px] font-bold bg-slate-700 text-slate-300 hover:text-white rounded hover:bg-slate-600 transition-colors"
+                                    className="px-2 py-1 text-[10px] font-bold bg-slate-700 text-slate-300 hover:text-white rounded hover:bg-slate-600 transition-colors"
                                 >
                                     Discard
                                 </button>
                                 <button 
                                     onClick={handleAcceptDiff}
-                                    className="px-3 py-1 text-[10px] font-bold bg-green-600 text-white rounded hover:bg-green-500 transition-colors shadow-lg"
+                                    className="px-2 py-1 text-[10px] font-bold bg-green-600 text-white rounded hover:bg-green-500 transition-colors shadow-lg"
                                 >
                                     Accept Changes
                                 </button>
@@ -435,9 +436,9 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
 
                     <div className="flex-grow relative bg-[#0b0e14] overflow-hidden">
                         {selectedNode.type === 'folder' ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
-                                <span className="text-4xl mb-4 opacity-50">📂</span>
-                                <p className="text-sm">Folder selected. Choose a file to view content.</p>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
+                                <span className="text-4xl mb-2 opacity-50">📂</span>
+                                <p className="text-xs">Folder selected. Choose a file to view content.</p>
                             </div>
                         ) : pendingContent ? (
                             <div className="absolute inset-0">
@@ -460,31 +461,33 @@ const FileStructureView: React.FC<FileStructureViewProps> = ({ structure, archit
                         {isGenerating && (
                             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
                                 <div className="bg-[#1e293b] p-4 rounded-xl border border-white/10 flex flex-col items-center shadow-2xl">
-                                    <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mb-2"></div>
-                                    <span className="text-xs font-bold text-white">Writing Code...</span>
+                                    <div className="w-6 h-6 border-2 border-brand-primary border-t-transparent rounded-full animate-spin mb-2"></div>
+                                    <span className="text-xs font-bold text-white">Coding...</span>
                                 </div>
                             </div>
                         )}
                     </div>
                 </>
             ) : (
-                <div className="flex-grow flex flex-col items-center justify-center text-slate-500">
-                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                        <span className="text-3xl">📝</span>
+                <div className="flex-grow flex flex-col items-center justify-center text-slate-600">
+                    <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mb-3">
+                        <span className="text-2xl">📝</span>
                     </div>
-                    <p className="text-sm">Select a file to preview or edit its code.</p>
+                    <p className="text-xs">Select a file to preview or edit its code.</p>
                 </div>
             )}
         </div>
       </div>
 
+      {/* Footer Action */}
       {!hideActions && !readOnly && (
-        <div className="text-center mt-8">
+        <div className="flex-shrink-0 pt-4 flex justify-end">
             <button
             onClick={onContinue}
-            className="px-8 py-3 bg-brand-secondary text-white font-bold rounded-lg shadow-lg hover:bg-blue-500 transition-all transform hover:scale-105"
+            className="px-6 py-2 bg-white/5 hover:bg-brand-primary text-white text-xs font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
             >
-            Confirm Structure & Create Plan
+            <span>Next: UI/UX Design</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
             </button>
         </div>
       )}

@@ -264,7 +264,7 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
   const compareJson = compareSnapshot ? JSON.stringify(compareSnapshot.data[getDataKey(activeTab)], null, 2) || '' : '';
 
   return (
-    <div className={`animate-slide-in-up h-full flex flex-col ${focusMode ? 'fixed inset-0 z-[100] bg-[#0b0e14] p-6' : ''}`}>
+    <div className={`animate-fade-in h-full flex flex-col ${focusMode ? 'fixed inset-0 z-[100] bg-[#0b0e14] p-6' : ''}`}>
       {showSnapshots && (
           <SnapshotModal 
              snapshots={projectData.snapshots || []}
@@ -276,94 +276,94 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
           />
       )}
 
-      <div className="flex justify-between items-center mb-6">
+      {/* Top Bar */}
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
               Blueprint Studio
-              {isReadOnly && <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700 font-normal">Viewer Mode</span>}
+              {isReadOnly && <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700 font-normal">Viewer Mode</span>}
           </h2>
-          <p className="text-glass-text-secondary text-sm">Refine your specifications before agent rule generation.</p>
+          <p className="text-xs text-glass-text-secondary">Refine your specifications before agent rule generation.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setFocusMode(!focusMode)}
-            className={`px-3 py-2 text-sm font-bold rounded-lg border transition-all ${focusMode ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${focusMode ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
             title="Toggle Focus Mode"
           >
             {focusMode ? 'Exit Focus' : 'Focus Mode'}
           </button>
           <button
             onClick={() => setShowComments(!showComments)}
-            className={`px-4 py-2 text-sm font-bold rounded-lg border transition-all flex items-center gap-2 ${showComments ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-2 ${showComments ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white/5 hover:bg-white/10 text-white border-white/10'}`}
           >
             <span>💬 Comments</span>
             {activeCommentCount > 0 && (
-                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{activeCommentCount}</span>
+                <span className="bg-red-500 text-white text-[9px] px-1.5 rounded-full">{activeCommentCount}</span>
             )}
           </button>
           {!isReadOnly && (
               <button
                 onClick={() => setShowSnapshots(true)}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg border border-white/10 transition-all flex items-center gap-2"
               >
                 <span>🕰️ History</span>
                 {projectData.snapshots && projectData.snapshots.length > 0 && (
-                    <span className="bg-brand-primary text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectData.snapshots.length}</span>
+                    <span className="bg-brand-primary text-white text-[9px] px-1.5 rounded-full">{projectData.snapshots.length}</span>
                 )}
               </button>
           )}
           <button
             onClick={handleHealthCheck}
             disabled={isCheckingHealth}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-brand-accent text-sm font-bold rounded-lg border border-brand-accent/20 transition-all flex items-center gap-2"
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-brand-accent text-xs font-bold rounded-lg border border-brand-accent/20 transition-all flex items-center gap-2"
           >
-            {isCheckingHealth ? <div className="w-4 h-4 border-2 border-brand-accent border-t-transparent rounded-full animate-spin"></div> : <span>🛡️ Health Check</span>}
+            {isCheckingHealth ? <div className="w-3 h-3 border-2 border-brand-accent border-t-transparent rounded-full animate-spin"></div> : <span>🛡️ Check</span>}
           </button>
           {!focusMode && !isReadOnly && (
             <button
                 onClick={onContinue}
-                className="px-6 py-2 glass-button-primary text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+                className="px-4 py-1.5 bg-brand-primary hover:bg-brand-secondary text-white text-xs font-bold rounded-lg shadow-lg transition-all flex items-center gap-2"
             >
-                <span>Proceed to Rules</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                <span>Generate Rules</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-grow min-h-[600px] relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-4 flex-grow min-h-0 overflow-hidden">
         {/* Navigation Sidebar */}
-        <div className="w-full lg:w-56 flex-shrink-0 flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
+        <div className="w-full lg:w-48 flex-shrink-0 flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto lg:h-full pb-2 lg:pb-0 custom-scrollbar bg-[#0b0e14] rounded-xl border border-white/5 p-2">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setHealthReport(null); if(mode === 'diff') setMode('visual'); }}
               disabled={isRefining}
-              className={`px-4 py-3 rounded-xl text-left font-medium transition-all whitespace-nowrap border flex justify-between items-center ${
+              className={`px-3 py-2 rounded-lg text-left text-xs font-bold transition-all whitespace-nowrap border flex justify-between items-center ${
                 activeTab === tab
                   ? 'bg-brand-primary/20 text-brand-accent border-brand-primary/30 shadow-lg'
-                  : 'bg-white/5 text-glass-text-secondary border-transparent hover:bg-white/10 hover:text-white'
+                  : 'bg-transparent text-glass-text-secondary border-transparent hover:bg-white/5 hover:text-white'
               }`}
             >
               {tab}
               {projectData.comments?.some(c => c.section === tab && !c.resolved) && (
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
               )}
             </button>
           ))}
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-grow flex flex-col glass-panel rounded-2xl border-white/5 overflow-hidden relative shadow-inner">
+        <div className="flex-grow flex flex-col bg-[#0b0e14] rounded-xl border border-white/5 overflow-hidden relative shadow-inner">
           {isRefining && (
             <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col">
-                <div className="w-12 h-12 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="w-10 h-10 border-4 border-brand-secondary border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="text-brand-accent font-bold animate-pulse uppercase tracking-widest text-xs">Architect is Thinking...</p>
             </div>
           )}
 
           {/* Toolbar */}
-          <div className="bg-white/5 px-4 py-2 border-b border-white/5 flex justify-between items-center">
+          <div className="bg-white/5 px-4 py-2 border-b border-white/5 flex justify-between items-center flex-shrink-0">
              <div className="flex items-center gap-3">
                  <span className="text-xs font-bold text-glass-text-secondary uppercase tracking-widest">{activeTab} Layer</span>
                  {mode === 'diff' && compareSnapshot && (
@@ -397,9 +397,9 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
              </div>
           </div>
 
-          <div className="flex-grow p-6 overflow-y-auto custom-scrollbar relative">
+          <div className="flex-grow overflow-hidden relative">
              {healthReport ? (
-               <div className="animate-fade-in bg-brand-primary/10 border border-brand-primary/30 p-6 rounded-2xl">
+               <div className="h-full overflow-y-auto p-6 animate-fade-in bg-brand-primary/10 border border-brand-primary/30 m-4 rounded-xl">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-bold text-brand-accent">Integrity Scan Results</h3>
                     <button onClick={() => setHealthReport(null)} className="text-glass-text-secondary hover:text-white">Close</button>
@@ -407,8 +407,8 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                   <MarkdownRenderer content={healthReport} />
                </div>
              ) : mode === 'code' ? (
-               <div className="h-full flex flex-col relative bg-[#0b0e14] rounded-xl border border-white/10 overflow-hidden">
-                 <div className="absolute top-0 left-0 bottom-0 w-8 bg-white/5 border-r border-white/5 flex flex-col items-center pt-4 text-[10px] text-glass-text-secondary font-mono select-none">
+               <div className="h-full flex flex-col relative bg-[#0b0e14] overflow-hidden">
+                 <div className="absolute top-0 left-0 bottom-0 w-8 bg-white/5 border-r border-white/5 flex flex-col items-center pt-4 text-[10px] text-glass-text-secondary font-mono select-none pointer-events-none z-10">
                      {/* Fake Line Numbers */}
                      {Array.from({length: 30}).map((_, i) => <div key={i}>{i+1}</div>)}
                  </div>
@@ -416,11 +416,11 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                     value={jsonContent}
                     onChange={handleJsonChange}
                     readOnly={isReadOnly}
-                    className={`flex-grow w-full bg-transparent text-blue-200 font-mono text-sm p-4 pl-10 focus:outline-none resize-none leading-relaxed ${isReadOnly ? 'cursor-not-allowed opacity-80' : ''}`}
+                    className={`flex-grow w-full bg-transparent text-blue-200 font-mono text-xs p-4 pl-10 focus:outline-none resize-none leading-relaxed custom-scrollbar ${isReadOnly ? 'cursor-not-allowed opacity-80' : ''}`}
                     spellCheck={false}
                  />
                  {jsonError && (
-                    <div className="absolute bottom-4 right-4 bg-red-900/90 text-red-200 px-4 py-2 rounded-lg text-xs border border-red-700/50 animate-pulse backdrop-blur flex items-center gap-3">
+                    <div className="absolute bottom-4 right-4 bg-red-900/90 text-red-200 px-4 py-2 rounded-lg text-xs border border-red-700/50 animate-pulse backdrop-blur flex items-center gap-3 z-20">
                         <span>Syntax Warning: {jsonError}</span>
                         {!isReadOnly && (
                             <button 
@@ -435,11 +435,11 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
                  )}
                </div>
              ) : mode === 'diff' ? (
-                 <div className="h-full animate-fade-in">
+                 <div className="h-full animate-fade-in p-4">
                      <DiffViewer oldCode={compareJson} newCode={currentJson} />
                  </div>
              ) : (
-                <div className="h-full flex flex-col">
+                <div className="h-full flex flex-col overflow-hidden">
                   {activeTab === 'Architecture' && <ArchitectureView architecture={projectData.architecture} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
                   {activeTab === 'Data Model' && <DataModelView data={projectData.schema} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
                   {activeTab === 'Files' && <FileStructureView structure={projectData.fileStructure} onContinue={() => {}} hideActions={true} readOnly={isReadOnly} />}
@@ -452,19 +452,19 @@ const BlueprintStudio: React.FC<BlueprintStudioProps> = ({ projectData, onUpdate
 
           {/* AI Refinement Bar */}
           {mode === 'visual' && !isReadOnly && (
-              <div className="bg-white/5 border-t border-white/5 p-4">
+              <div className="bg-white/5 border-t border-white/5 p-3 flex-shrink-0">
                  <form onSubmit={handleRefineSubmit} className="flex gap-2">
                     <input 
                         type="text" 
                         value={refinePrompt}
                         onChange={(e) => setRefinePrompt(e.target.value)}
                         placeholder={`Instruct Architect to refine the ${activeTab} layer...`}
-                        className="flex-grow glass-input rounded-xl px-4 py-3 text-white focus:outline-none placeholder-white/20"
+                        className="flex-grow glass-input rounded-lg px-3 py-2 text-xs text-white focus:outline-none placeholder-white/20"
                     />
                     <button 
                         type="submit" 
                         disabled={!refinePrompt.trim() || isRefining}
-                        className="glass-button-primary hover:scale-105 disabled:opacity-50 disabled:grayscale text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg"
+                        className="bg-brand-primary hover:bg-brand-secondary disabled:opacity-50 disabled:grayscale text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all shadow-lg"
                     >
                         {isRefining ? 'Thinking...' : <span>✨ Refine</span>}
                     </button>

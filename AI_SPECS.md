@@ -54,6 +54,12 @@ config: { thinkingConfig: { thinkingBudget: 8000 } }
 ### 4.3 Context Injection
 Use `getKnowledgeContext()` to inject RAG data (Knowledge Base docs) into prompts.
 
+### 4.4 Template Strategy
+When a project is initialized from a `STARTER_TEMPLATE`:
+1.  The `constraints` field MUST be treated as hard requirements.
+2.  The `idea` field provides the functional scope.
+3.  The AI should prioritize libraries mentioned in the constraints (e.g., if `Three.js` is requested, do not suggest 2D canvas).
+
 ---
 
 ## 5. Edge Runtime Integration

@@ -110,13 +110,8 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
   };
 
   const prepareFiles = async () => {
-      // 1. Generate core manifests freshly
-      // NOTE: In a real app we'd cache these or rely on 'consolidate' having run.
-      // For now we re-generate on export to ensure freshness if user didn't consolidate.
-      
       const vfs = buildVirtualFileSystem(projectData);
       
-      // Ensure we have some base files if not present
       if (!vfs.find(f => f.path === 'README.md')) {
           vfs.push({
               path: 'README.md',
@@ -135,14 +130,11 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
       
       setIsPushing(true);
       try {
-          // 1. Update Project Data with config
           const config: GitHubConfig = { repoOwner, repoName, branch: 'main' };
           onUpdateProject({ githubConfig: config });
 
-          // 2. Prepare Files
           const files = await prepareFiles();
 
-          // 3. Push
           const branchName = `setup/0relai-init-${Date.now()}`;
           const { prUrl, prNumber } = await ghSync.pushAndPR(
               repoOwner,
@@ -173,11 +165,9 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
           zip.file(file.path, file.content);
       });
 
-      // Extra docs not in VFS usually
       zip.file("docs/COMPLIANCE_REPORT.md", generateComplianceReport());
       if (assets) zip.file("docs/KICKOFF_BRIEFING.md", assets);
 
-      // Plugins
       if (projectData.activePlugins && projectData.activePlugins.length > 0) {
           for (const pluginId of projectData.activePlugins) {
               const plugin = getPluginById(pluginId);
@@ -211,52 +201,58 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
   };
 
   return (
-    <div className="animate-slide-in-up h-full flex flex-col relative">
+    <div className="animate-fade-in h-full flex flex-col relative overflow-hidden">
       {showConfetti && <Confetti />}
       
-      <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl sm:text-3xl font-bold text-brand-text">Project Handover</h2>
-          
-          <div className="bg-white/5 p-1 rounded-xl flex overflow-x-auto max-w-[60vw]">
+      {/* Header */}
+      <div className="flex-shrink-0 mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Project Handover</h2>
+                <p className="text-xs text-glass-text-secondary">Export blueprints and initiate codebase.</p>
+            </div>
+            
+            <div className="bg-black/20 p-1 rounded-lg flex border border-white/5">
                 {['briefing', 'codebase', 'devops', 'verify', 'download'].map(tab => (
                     <button 
                         key={tab}
                         onClick={() => setActiveTab(tab as any)}
-                        className={`px-4 py-2 text-xs font-bold uppercase rounded-lg transition-all whitespace-nowrap ${activeTab === tab ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
+                        className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all whitespace-nowrap ${activeTab === tab ? 'bg-brand-primary text-white shadow-lg' : 'text-glass-text-secondary hover:text-white'}`}
                     >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
                 ))}
+            </div>
           </div>
       </div>
       
-      <div className="flex-grow overflow-y-auto custom-scrollbar p-1">
+      <div className="flex-grow min-h-0 overflow-y-auto custom-scrollbar bg-[#0b0e14] rounded-xl border border-white/5 relative p-1">
         
         {/* TAB: BRIEFING */}
         {activeTab === 'briefing' && (
-            <div>
+            <div className="h-full overflow-y-auto custom-scrollbar p-6">
                 {!assets ? (
-                    <div className="text-center py-20 glass-panel rounded-3xl border-brand-primary/20 border">
-                    <div className="w-24 h-24 bg-gradient-to-br from-brand-primary/20 to-brand-accent/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-brand-primary/30 relative">
-                        <div className="absolute inset-0 bg-brand-primary/10 rounded-full animate-ping"></div>
-                        <span className="text-5xl relative z-10">🚀</span>
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Architectural Blueprint Finalized</h3>
-                    <p className="text-lg text-blue-200 mb-8 max-w-xl mx-auto px-4">
-                        All layers of the stack have been engineered. Ready to compile the final developer bundle and kickoff instructions.
-                    </p>
-                    <button
-                        onClick={onGenerate}
-                        className="px-10 py-4 glass-button-primary text-white font-bold text-lg rounded-2xl shadow-xl hover:scale-105 transition-all"
-                    >
-                        Initialize Briefing
-                    </button>
+                    <div className="h-full flex flex-col items-center justify-center text-center">
+                        <div className="w-20 h-20 bg-gradient-to-br from-brand-primary/20 to-brand-accent/20 rounded-full flex items-center justify-center mb-6 border border-brand-primary/30 relative">
+                            <div className="absolute inset-0 bg-brand-primary/10 rounded-full animate-ping"></div>
+                            <span className="text-4xl relative z-10">🚀</span>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Ready to Launch</h3>
+                        <p className="text-sm text-blue-200 mb-8 max-w-md">
+                            All blueprint layers are finalized. Generate the official kickoff briefing for your team.
+                        </p>
+                        <button
+                            onClick={onGenerate}
+                            className="px-8 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-bold text-sm rounded-xl shadow-xl transition-all"
+                        >
+                            Generate Briefing
+                        </button>
                     </div>
                 ) : (
-                    <div className="glass-panel p-8 rounded-3xl">
-                        <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                    <div className="prose prose-invert max-w-none">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                             <span className="text-2xl">📝</span>
-                            <h3 className="text-2xl font-bold text-white">Kickoff Briefing</h3>
+                            <h3 className="text-xl font-bold text-white m-0">Kickoff Briefing</h3>
                         </div>
                         <MarkdownRenderer content={assets} />
                     </div>
@@ -266,55 +262,52 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
 
         {/* TAB: CODEBASE PREVIEW */}
         {activeTab === 'codebase' && (
-            <div className="animate-fade-in space-y-4">
-                <div className="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="text-2xl">💾</div>
-                        <div>
-                            <h3 className="text-white font-bold text-sm">Unified Codebase</h3>
-                            <p className="text-xs text-glass-text-secondary">
-                                Review and edit all generated files before export.
-                            </p>
-                        </div>
+            <div className="h-full flex flex-col animate-fade-in p-1">
+                <div className="flex justify-between items-center bg-slate-800/50 px-4 py-2 rounded-t-xl border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">💾</span>
+                        <span className="text-xs font-bold text-white">Unified Codebase</span>
                     </div>
                     <button 
                         onClick={handleConsolidate}
                         disabled={isConsolidating}
-                        className="bg-brand-secondary/20 hover:bg-brand-secondary/40 text-brand-secondary border border-brand-secondary/50 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                        className="bg-brand-secondary/20 hover:bg-brand-secondary/40 text-brand-secondary border border-brand-secondary/50 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-2"
                         title="Permanently save all AI-generated files into the project structure"
                     >
                         {isConsolidating ? <span className="animate-spin">⟳</span> : <span>📥</span>}
                         Consolidate Assets
                     </button>
                 </div>
-                <CodebaseViewer 
-                    projectData={projectData} 
-                    onFileUpdate={handleFileUpdate}
-                />
+                <div className="flex-grow overflow-hidden relative">
+                    <CodebaseViewer 
+                        projectData={projectData} 
+                        onFileUpdate={handleFileUpdate}
+                    />
+                </div>
             </div>
         )}
 
         {/* TAB: DEVOPS */}
         {activeTab === 'devops' && (
-            <div className="space-y-6">
+            <div className="h-full overflow-y-auto custom-scrollbar p-6">
                 {!projectData.devOpsConfig ? (
-                    <div className="text-center py-16 bg-slate-900/50 rounded-3xl border border-white/5">
-                        <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">
+                    <div className="h-full flex flex-col items-center justify-center text-center">
+                        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-6 text-3xl">
                             ⚙️
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">DevOps Engineering</h3>
-                        <p className="text-glass-text-secondary max-w-md mx-auto mb-8">
-                            Generate production-ready Dockerfiles, Orchestration scripts, and GitHub Actions pipelines tailored to your architecture.
+                        <h3 className="text-lg font-bold text-white mb-2">DevOps Engineering</h3>
+                        <p className="text-xs text-glass-text-secondary max-w-sm mx-auto mb-6">
+                            Generate production-ready Dockerfiles and GitHub Actions pipelines tailored to your architecture.
                         </p>
                         <button
                             onClick={handleGenerateDevOps}
                             disabled={isGeneratingDevOps}
-                            className="bg-brand-secondary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 mx-auto disabled:opacity-50"
+                            className="bg-brand-secondary hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
                         >
                             {isGeneratingDevOps ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                                    <span>Engineering Pipeline...</span>
+                                    <span>Generating...</span>
                                 </>
                             ) : (
                                 <span>Generate CI/CD Assets</span>
@@ -322,29 +315,31 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="bg-[#0f172a] rounded-xl border border-glass-border overflow-hidden flex flex-col h-[500px]">
-                            <div className="bg-slate-800 px-4 py-2 border-b border-glass-border flex justify-between items-center">
-                                <span className="text-xs font-bold text-blue-300 font-mono">Dockerfile</span>
-                                <button onClick={() => navigator.clipboard.writeText(projectData.devOpsConfig?.dockerfile || '')} className="text-xs text-slate-400 hover:text-white">Copy</button>
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-[#0f172a] rounded-xl border border-glass-border overflow-hidden flex flex-col h-[400px]">
+                                <div className="bg-slate-800 px-4 py-2 border-b border-glass-border flex justify-between items-center">
+                                    <span className="text-xs font-bold text-blue-300 font-mono">Dockerfile</span>
+                                    <button onClick={() => navigator.clipboard.writeText(projectData.devOpsConfig?.dockerfile || '')} className="text-[10px] text-slate-400 hover:text-white">Copy</button>
+                                </div>
+                                <pre className="p-4 overflow-auto custom-scrollbar text-xs font-mono text-slate-300 flex-grow">
+                                    {projectData.devOpsConfig.dockerfile}
+                                </pre>
                             </div>
-                            <pre className="p-4 overflow-auto custom-scrollbar text-xs font-mono text-slate-300 flex-grow">
-                                {projectData.devOpsConfig.dockerfile}
-                            </pre>
+
+                            <div className="bg-[#0f172a] rounded-xl border border-glass-border overflow-hidden flex flex-col h-[400px]">
+                                <div className="bg-slate-800 px-4 py-2 border-b border-glass-border flex justify-between items-center">
+                                    <span className="text-xs font-bold text-purple-300 font-mono">deploy.yml</span>
+                                    <button onClick={() => navigator.clipboard.writeText(projectData.devOpsConfig?.ciPipeline || '')} className="text-[10px] text-slate-400 hover:text-white">Copy</button>
+                                </div>
+                                <pre className="p-4 overflow-auto custom-scrollbar text-xs font-mono text-slate-300 flex-grow">
+                                    {projectData.devOpsConfig.ciPipeline}
+                                </pre>
+                            </div>
                         </div>
 
-                        <div className="bg-[#0f172a] rounded-xl border border-glass-border overflow-hidden flex flex-col h-[500px]">
-                            <div className="bg-slate-800 px-4 py-2 border-b border-glass-border flex justify-between items-center">
-                                <span className="text-xs font-bold text-purple-300 font-mono">.github/workflows/deploy.yml</span>
-                                <button onClick={() => navigator.clipboard.writeText(projectData.devOpsConfig?.ciPipeline || '')} className="text-xs text-slate-400 hover:text-white">Copy</button>
-                            </div>
-                            <pre className="p-4 overflow-auto custom-scrollbar text-xs font-mono text-slate-300 flex-grow">
-                                {projectData.devOpsConfig.ciPipeline}
-                            </pre>
-                        </div>
-
-                        <div className="lg:col-span-2 bg-slate-800/50 p-6 rounded-xl border border-white/5">
-                            <h3 className="text-lg font-bold text-white mb-4">Deployment Strategy</h3>
+                        <div className="bg-slate-800/50 p-6 rounded-xl border border-white/5">
+                            <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">Deployment Strategy</h3>
                             <MarkdownRenderer content={projectData.devOpsConfig.deploymentGuide} />
                         </div>
                     </div>
@@ -352,42 +347,44 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
             </div>
         )}
 
-        {/* TAB: VERIFY (Drift Analysis) */}
+        {/* TAB: VERIFY */}
         {activeTab === 'verify' && (
-            <DriftAnalyzer 
-                plannedStructure={projectData.fileStructure || []} 
-                onSyncBlueprint={(newStructure) => onUpdateProject({ fileStructure: newStructure })}
-            />
+            <div className="h-full p-6 overflow-y-auto custom-scrollbar">
+                <DriftAnalyzer 
+                    plannedStructure={projectData.fileStructure || []} 
+                    onSyncBlueprint={(newStructure) => onUpdateProject({ fileStructure: newStructure })}
+                />
+            </div>
         )}
 
         {/* TAB: DOWNLOAD */}
         {activeTab === 'download' && (
-            <div className="flex flex-col items-center justify-center min-h-[400px] gap-8">
+            <div className="h-full flex flex-col items-center justify-center p-6 gap-8">
                 {/* ZIP CARD */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden group max-w-xl w-full text-center">
-                    <h3 className="text-2xl font-bold text-white mb-2 relative z-10">Local Bundle</h3>
-                    <p className="text-slate-400 mb-6 relative z-10 text-sm">
+                <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden group max-w-md w-full text-center">
+                    <h3 className="text-xl font-bold text-white mb-2 relative z-10">Local Bundle</h3>
+                    <p className="text-slate-400 mb-6 relative z-10 text-xs">
                         Download the full project scaffold as a ZIP archive.
                     </p>
                     <button
                         onClick={handleDownloadBundle}
                         disabled={isZipping}
-                        className="w-full py-3 glass-button-primary text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 relative z-10"
+                        className="w-full py-3 bg-brand-primary hover:bg-brand-secondary text-white text-sm font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 relative z-10 transition-all"
                     >
                         {isZipping ? 'Zipping...' : <span>⬇ Download ZIP</span>}
                     </button>
                 </div>
 
                 {/* GITHUB CARD */}
-                <div className="bg-[#0d1117] p-8 rounded-3xl border border-slate-700 shadow-2xl relative overflow-hidden group max-w-xl w-full text-center">
-                    <h3 className="text-2xl font-bold text-white mb-2 relative z-10 flex items-center justify-center gap-2">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <div className="bg-[#0d1117] p-8 rounded-3xl border border-slate-700 shadow-2xl relative overflow-hidden group max-w-md w-full text-center">
+                    <h3 className="text-xl font-bold text-white mb-2 relative z-10 flex items-center justify-center gap-2">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                         GitHub Integration
                     </h3>
                     
                     {prLink ? (
                         <div className="mt-4 bg-green-900/20 border border-green-500/30 p-4 rounded-xl">
-                            <p className="text-green-400 font-bold mb-2">🚀 Pull Request Open</p>
+                            <p className="text-green-400 font-bold mb-2 text-xs">🚀 Pull Request Open</p>
                             <a href={prLink} target="_blank" rel="noreferrer" className="text-xs text-white underline break-all">{prLink}</a>
                         </div>
                     ) : (
@@ -398,7 +395,7 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
                                     <input 
                                         value={repoOwner}
                                         onChange={(e) => setRepoOwner(e.target.value)}
-                                        className="w-full bg-slate-800 rounded border border-slate-700 px-2 py-1 text-xs text-white"
+                                        className="w-full bg-slate-800 rounded border border-slate-700 px-2 py-1.5 text-xs text-white"
                                         placeholder="octocat"
                                     />
                                 </div>
@@ -407,7 +404,7 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
                                     <input 
                                         value={repoName}
                                         onChange={(e) => setRepoName(e.target.value)}
-                                        className="w-full bg-slate-800 rounded border border-slate-700 px-2 py-1 text-xs text-white"
+                                        className="w-full bg-slate-800 rounded border border-slate-700 px-2 py-1.5 text-xs text-white"
                                         placeholder="my-app"
                                     />
                                 </div>
@@ -419,7 +416,7 @@ ${na.map(i => `- [ ] ~~${i.standard}: ${i.requirement}~~`).join('\n')}
                             >
                                 {isPushing ? 'Pushing...' : 'Push & Create PR'}
                             </button>
-                            <p className="text-[10px] text-slate-500 text-center">Requires Personal Access Token (Configure in Settings)</p>
+                            <p className="text-[10px] text-slate-500 text-center">Requires Personal Access Token</p>
                         </div>
                     )}
                 </div>

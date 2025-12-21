@@ -16,9 +16,10 @@ import type { Node, Edge, Connection, NodeProps } from 'reactflow';
 import { ArchitectureData, ArchitectureNode, ArchitectureEdge, FileNode } from '../types';
 import { GeminiService } from '../GeminiService';
 import { exportAsImage } from '../utils/imageExporter';
+import { useProject } from '../ProjectContext'; // Import context
 
 // --- Custom Node Component ---
-const ArchNode = ({ data, selected, xPos, yPos }: NodeProps) => {
+const ArchNode = ({ data, selected }: NodeProps) => {
     const { label, type, status, icon, message } = data;
     
     const getNodeStyle = () => {
@@ -113,6 +114,7 @@ const VisualArchitecture: React.FC<VisualArchitectureProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gemini = useMemo(() => new GeminiService(), []);
+  const { dispatch } = useProject(); // Access context to dispatch selection events
   
   // Transform initial props to ReactFlow format
   const initialNodes: Node[] = useMemo(() => {
@@ -168,8 +170,16 @@ const VisualArchitecture: React.FC<VisualArchitectureProps> = ({
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
 
+  // Handle node selection
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+      dispatch({ type: 'SET_SELECTED_NODE', payload: node.id });
+  }, [dispatch]);
+
+  const onPaneClick = useCallback(() => {
+      dispatch({ type: 'SET_SELECTED_NODE', payload: undefined });
+  }, [dispatch]);
+
   // Sync state when architecture prop changes (e.g. from AI)
-  // We need to be careful not to overwrite local resizing with old props
   useEffect(() => {
       if (architecture.visualLayout && architecture.visualLayout.length > 0) {
           const newNodes = architecture.visualLayout.map(n => {
@@ -184,7 +194,6 @@ const VisualArchitecture: React.FC<VisualArchitectureProps> = ({
           });
 
           setNodes(nds => {
-              // Only update if IDs or positions/sizes drastically changed (avoid jitter on minor diffs)
               const currentHash = JSON.stringify(nds.map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.style?.width, h: n.style?.height })));
               const newHash = JSON.stringify(newNodes.map(n => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.style?.width, h: n.style?.height })));
               
@@ -235,7 +244,6 @@ const VisualArchitecture: React.FC<VisualArchitectureProps> = ({
               protocol: e.label as any
           }));
 
-          // Basic diff check to prevent infinite loops
           const prevLayoutStr = JSON.stringify(architecture.visualLayout?.map(n => ({id:n.id, x:n.x, y:n.y, w:n.width, h:n.height})));
           const newLayoutStr = JSON.stringify(visualLayout.map(n => ({id:n.id, x:n.x, y:n.y, w:n.width, h:n.height})));
 
@@ -418,6 +426,8 @@ const VisualArchitecture: React.FC<VisualArchitectureProps> = ({
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onEdgeClick={onEdgeClick}
+                onNodeClick={onNodeClick}
+                onPaneClick={onPaneClick}
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 nodeTypes={nodeTypes}
