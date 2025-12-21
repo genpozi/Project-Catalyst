@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, Chat, FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, Type, Chat, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
 import { 
   ProjectData, BrainstormingData, ResearchReportData, ArchitectureData, SchemaData, 
   FileNode, DesignSystem, ApiSpecification, SecurityContext, Phase, 
@@ -66,7 +66,7 @@ export class GeminiService {
             }
           }
         }
-      });
+      }) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "{}");
     } catch (e) {
       console.error("Audio analysis error", e);
@@ -96,7 +96,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -107,7 +107,7 @@ export class GeminiService {
       Current Data: ${JSON.stringify(currentData)}
       Return the updated data structure in JSON format matching the original schema.`,
       config: { responseMimeType: "application/json" }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -119,7 +119,7 @@ export class GeminiService {
       ${currentRules}
       
       Return the updated rules as markdown text.`
-    }));
+    })) as GenerateContentResponse;
     return response.text || currentRules;
   }
 
@@ -140,7 +140,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     
     // Google Search grounding handling
     let sources: { uri: string; title: string }[] = [];
@@ -172,7 +172,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     
     // Generate initial graph layout in a separate step or inferred
     const data = cleanAndParseJson<ArchitectureData>(response.text || "{}");
@@ -201,7 +201,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -222,7 +222,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -247,7 +247,7 @@ export class GeminiService {
             }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "[]");
   }
 
@@ -267,7 +267,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -286,7 +286,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -359,7 +359,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -377,7 +377,7 @@ export class GeminiService {
       - Error handling patterns
       
       Return raw markdown content for the file.`,
-    }));
+    })) as GenerateContentResponse;
     return response.text || "";
   }
 
@@ -411,7 +411,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "[]");
   }
 
@@ -424,7 +424,7 @@ export class GeminiService {
       contents: `Write a detailed implementation guide for this task: "${task.content}".
       Context: ${projectData.initialIdea}. Stack: ${JSON.stringify(projectData.architecture?.stack)}.
       Include code snippets and file locations.`,
-    }));
+    })) as GenerateContentResponse;
     return response.text || "";
   }
 
@@ -447,7 +447,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "[]");
   }
 
@@ -470,7 +470,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -495,7 +495,7 @@ export class GeminiService {
           }
         }
       }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -505,7 +505,7 @@ export class GeminiService {
       contents: `Generate a Kickoff Briefing for the team working on ${projectData.name}.
       Include: Vision, Architecture Summary, Immediate Next Steps (from Action Plan), and success metrics.
       Format as Markdown.`,
-    }));
+    })) as GenerateContentResponse;
     return response.text || "";
   }
 
@@ -524,7 +524,7 @@ export class GeminiService {
                 }
             }
         }
-    }));
+    })) as GenerateContentResponse;
     return cleanAndParseJson(response.text || "{}");
   }
 
@@ -547,7 +547,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "{}");
   }
 
@@ -572,7 +572,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       const data = cleanAndParseJson<ArchitectureData>(response.text || "{}");
       return { ...currentArch, ...data };
   }
@@ -594,7 +594,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "{}");
   }
 
@@ -620,7 +620,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "[]");
   }
 
@@ -631,7 +631,7 @@ export class GeminiService {
           Path context: inferred.
           Project Stack: ${JSON.stringify(projectData.architecture?.stack)}.
           Return ONLY the code.`,
-      }));
+      })) as GenerateContentResponse;
       // Remove markdown code blocks if present
       let text = response.text || "";
       text = text.replace(/```[a-z]*\n/g, '').replace(/```$/g, '');
@@ -644,7 +644,7 @@ export class GeminiService {
           contents: `Generate a single HTML file containing a Tailwind CSS wireframe for the main dashboard of this project: ${projectData.name}.
           Design System: ${JSON.stringify(projectData.designSystem?.colorPalette)}.
           Return ONLY valid HTML code.`,
-      }));
+      })) as GenerateContentResponse;
       let text = response.text || "";
       const match = text.match(/```html\s*([\s\S]*?)\s*```/);
       if (match) return match[1];
@@ -672,7 +672,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "[]");
   }
 
@@ -681,7 +681,7 @@ export class GeminiService {
           model: this.modelFlash,
           contents: `Fix this malformed JSON string and return valid JSON:\n${jsonString}`,
           config: { responseMimeType: "application/json" }
-      });
+      }) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "{}");
   }
 
@@ -702,7 +702,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "{}");
   }
 
@@ -715,7 +715,7 @@ export class GeminiService {
           ${actualTree}
           
           Report discrepancies, missing files, and unexpected files. Output Markdown.`,
-      }));
+      })) as GenerateContentResponse;
       return response.text || "Analysis failed.";
   }
 
@@ -741,7 +741,7 @@ export class GeminiService {
                   }
               }
           }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "[]");
   }
 
@@ -755,7 +755,7 @@ export class GeminiService {
           
           Return JSON with: initialIdea, projectType, architecture (stack, patterns).`,
           config: { responseMimeType: "application/json" }
-      }));
+      })) as GenerateContentResponse;
       return cleanAndParseJson(response.text || "{}");
   }
 
@@ -777,7 +777,7 @@ export class GeminiService {
           contents: `Perform a health check on this project blueprint.
           Data: ${JSON.stringify({ architecture: projectData.architecture, schema: projectData.schema, api: projectData.apiSpec })}
           Identify inconsistencies, missing components, or scalability risks. Output Markdown.`,
-      });
+      }) as GenerateContentResponse;
       return response.text || "";
   }
 
@@ -792,7 +792,7 @@ export class GeminiService {
               systemInstruction: systemPrompt,
               tools: toolDecls.length > 0 ? [{ functionDeclarations: toolDecls }] : undefined
           }
-      });
+      }) as GenerateContentResponse;
 
       // Handle function calls
       if (response.functionCalls && response.functionCalls.length > 0) {
@@ -811,7 +811,7 @@ export class GeminiService {
                       { role: 'function', parts: [{ functionResponse: { name: call.name, response: { result } } }] }
                   ],
                   config: { systemInstruction: systemPrompt }
-              });
+              }) as GenerateContentResponse;
               return followUp.text || "";
           }
       }

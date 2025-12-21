@@ -6,17 +6,20 @@ import { FitAddon } from 'xterm-addon-fit';
 interface TerminalProps {
   onMount: (term: XTerm) => void;
   onInput?: (data: string) => void;
+  onResize?: (cols: number, rows: number) => void;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ onMount, onInput }) => {
+const Terminal: React.FC<TerminalProps> = ({ onMount, onInput, onResize }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const onInputRef = useRef(onInput);
+  const onResizeRef = useRef(onResize);
 
-  // Keep ref current to avoid re-binding listeners
+  // Keep refs current to avoid re-binding listeners
   useEffect(() => {
       onInputRef.current = onInput;
-  }, [onInput]);
+      onResizeRef.current = onResize;
+  }, [onInput, onResize]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -57,6 +60,10 @@ const Terminal: React.FC<TerminalProps> = ({ onMount, onInput }) => {
         if (resizeTimeout) clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             fitAddon.fit();
+            const dims = fitAddon.proposeDimensions();
+            if (dims && onResizeRef.current) {
+                onResizeRef.current(dims.cols, dims.rows);
+            }
         }, 100);
     });
     

@@ -20,6 +20,7 @@
 | **State** | React Context | Actions dispatched via `useReducer`. |
 | **Styling** | Tailwind CSS | Follow `brand-*` tokens. |
 | **Cloud DB** | Supabase | RLS enabled. Use `supabaseClient` wrapper. |
+| **Edge Runtime** | WebContainers | Requires COOP/COEP headers. |
 | **Local AI** | WebLLM | `gemma-2b-it-q4f32_1-MLC`. |
 | **Cloud AI** | Google GenAI | `gemini-3-pro-preview` for reasoning. |
 
@@ -36,7 +37,6 @@ Agents modifying state must adhere to the `ProjectData` interface.
 ### 3.2 State Updates
 *   **NEVER** mutate state directly.
 *   **ALWAYS** use `dispatch({ type: 'ACTION_NAME', payload: ... })`.
-*   **Cloud Sync:** Is handled automatically by `ProjectContext` effects. Do not manually call `cloudStorage.saveProject` inside components unless forcing an immediate save.
 
 ---
 
@@ -56,21 +56,25 @@ Use `getKnowledgeContext()` to inject RAG data (Knowledge Base docs) into prompt
 
 ---
 
-## 5. UI/UX Patterns
+## 5. Edge Runtime Integration
 
-### 5.1 The "Glass" Aesthetic
-*   **Backgrounds:** `bg-[#0b0e14]`.
-*   **Panels:** `glass-panel` class or `bg-slate-900/50 border-white/5`.
+### 5.1 Service Pattern (`WebContainerService.ts`)
+*   **Singleton:** Access via `webContainer` instance.
+*   **Lifecycle:** `boot()`, `mount(tree)`, `startShell(term)`, `teardown()`.
+*   **Filesystem:** Use `writeFile(path, content)` to inject code. Use `getSnapshot()` to read back changes.
 
-### 5.2 Safe Editors
-*   **Code:** Use `components/CodeEditor.tsx`.
-*   **Diff:** If overwriting user content, present a `DiffViewer` first.
+### 5.2 Restrictions
+*   The container cannot access the host filesystem directly.
+*   Networking is limited to what the browser allows (no raw TCP sockets, only WebSockets/HTTP).
 
 ---
 
-## 6. Workflow for New Features
-1.  **Define Type:** Update `types.ts`.
-2.  **Add Reducer Action:** Update `ProjectContext.tsx`.
-3.  **Implement View:** Create component.
-4.  **Add AI Logic:** Update `GeminiService.ts`.
-5.  **Validate:** Update `utils/validators.ts`.
+## 6. UI/UX Patterns
+
+### 6.1 The "Glass" Aesthetic
+*   **Backgrounds:** `bg-[#0b0e14]`.
+*   **Panels:** `glass-panel` class or `bg-slate-900/50 border-white/5`.
+
+### 6.2 Safe Editors
+*   **Code:** Use `components/CodeEditor.tsx`.
+*   **Diff:** If overwriting user content, present a `DiffViewer` first.

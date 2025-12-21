@@ -96,10 +96,6 @@ export class WebContainerService {
         };
     }
 
-    // Ensure src/main.jsx entry point exists if user hasn't defined it but we added index.html
-    // This is a rough heuristic; ideally the AI provides a complete tree.
-    // We assume the user structure is authoritative if present.
-
     await this.container.mount(tree);
   }
 
@@ -162,6 +158,47 @@ export class WebContainerService {
       } catch (e) {
           console.error(`Failed to write ${path} to container`, e);
       }
+  }
+
+  /**
+   * Reads the current state of the container file system and returns it as FileNode[]
+   * Excludes node_modules and hidden files to prevent freezing
+   */
+  public async getSnapshot(): Promise<FileNode[]> {
+      if (!this.container) return [];
+
+      const readDirRecursive = async (dirPath: string): Promise<FileNode[]> => {
+          const entries = await this.container!.fs.readdir(dirPath, { withFileTypes: true });
+          const nodes: FileNode[] = [];
+
+          for (const entry of entries) {
+              // Ignore node_modules and .git
+              if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist' || entry.name === '.npm') continue;
+
+              const fullPath = dirPath === '.' ? entry.name : `${dirPath}/${entry.name}`;
+
+              if (entry.isDirectory()) {
+                  nodes.push({
+                      name: entry.name,
+                      type: 'folder',
+                      description: 'Folder',
+                      children: await readDirRecursive(fullPath)
+                  });
+              } else {
+                  // Read content
+                  const content = await this.container!.fs.readFile(fullPath, 'utf-8');
+                  nodes.push({
+                      name: entry.name,
+                      type: 'file',
+                      description: 'File',
+                      content: content
+                  });
+              }
+          }
+          return nodes;
+      };
+
+      return await readDirRecursive('.');
   }
 
   public setServerReadyCallback(cb: (url: string) => void) {

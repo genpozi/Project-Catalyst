@@ -8,18 +8,15 @@
 
 ### 1. Cloud Sync & Login
 *   Click the **Login** button in the header to sign in via Email (Magic Link).
-*   **Benefits:**
-    *   **Sync:** Access your blueprints on any device.
-    *   **Backup:** Never lose your work if your browser cache clears.
-    *   **Marketplace:** Publish your best architectures to the community.
+*   **Benefits:** Sync, Backup, and Marketplace access.
 
-### 2. The Local Bridge (Optional but Recommended)
-To enable 0relai to write code directly to your computer:
-1.  Go to the **Verify** tab in the **Launch** phase.
-2.  Click "Setup Info".
-3.  Copy the `bridge.js` script to your project folder.
-4.  Run `node bridge.js`.
-5.  0relai will connect automatically via WebSocket.
+### 2. The Edge Runtime (Live Coding)
+0relai includes a full Node.js environment in the browser.
+1.  Click the **⚡** (Lightning Bolt) icon in the bottom bar or press `Cmd+J`.
+2.  **Boot:** Click "Boot Container". This mounts your project files into a virtual machine.
+3.  **Terminal:** Use the terminal to run commands like `npm install` or `npm run dev`.
+4.  **Preview:** Once a server is running, the "Live Preview" tab will automatically show your app.
+5.  **Sync Back:** If your build scripts create files (e.g., dist folders), click **"⬇ Pull to Editor"** to save them to your project blueprint.
 
 ---
 
@@ -55,14 +52,9 @@ This is your "God Mode" editor.
 ## 🛠️ Exporting Your Work
 When you are ready to code:
 1.  Go to the **Launch** phase.
-2.  Click **"Export Bundle"**.
-3.  You get a ZIP file containing:
-    *   `setup_repo.sh`
-    *   `README.md`
-    *   `.cursorrules` (Instructions for AI coding agents)
-    *   Infrastructure code (Terraform/Docker)
-    *   Full documentation (Markdown/Obsidian Vault)
+2.  Click **"Export Bundle"** for a ZIP file.
+3.  OR click **"Push to GitHub"** to create a repo and open a Pull Request automatically.
 
 ## 🆘 Troubleshooting
 *   **Red Status Bar:** You are offline. Cloud generation is disabled, but Local Intelligence still works.
-*   **Sync Issues:** If cloud sync fails, your data is safe in Local Storage. It will retry automatically.
+*   **Headers Missing:** If the Edge Runtime says "Headers Missing", you must run the app in a secure context (HTTPS or localhost) that supports `SharedArrayBuffer`.

@@ -2,7 +2,7 @@
 # 0relai - System Architecture
 
 ## 1. High-Level Overview
-0relai operates as a **Local-First Progressive Web App (PWA)**. It prioritizes local execution (IndexedDB, WebGPU) but leverages the cloud (Supabase, Gemini API) for persistence, collaboration, and heavy reasoning.
+0relai operates as a **Local-First Progressive Web App (PWA)**. It prioritizes local execution (IndexedDB, WebGPU, WebContainers) but leverages the cloud (Supabase, Gemini API) for persistence, collaboration, and heavy reasoning.
 
 ## 2. Core Components
 
@@ -25,10 +25,13 @@
     *   Refinement loops.
     *   Offline drafting.
 
-### 2.3 Visual Engine
-*   **Technology:** [React Flow](https://reactflow.dev) (WebGL-ready Canvas).
-*   **Capabilities:** Handles large graphs (>100 nodes), automatic layout optimization, and image export.
-*   **Presentation:** `PresentationDeck` overlays the UI state to create slide-like views.
+### 2.3 Edge Runtime (`WebContainerService`)
+*   **Technology:** WebContainer API (StackBlitz). Runs a micro-kernel in the browser.
+*   **Lifecycle:**
+    1.  **Boot:** Initializes the runtime (requires COOP/COEP headers).
+    2.  **Mount:** Maps the `ProjectData.fileStructure` to the container's virtual filesystem.
+    3.  **Shell:** Spawns `jsh` processes connected to `XTerm.js` in the UI.
+    4.  **Sync:** Allows reading the container's filesystem state back into the React App via `getSnapshot()`.
 
 ### 2.4 The Bridge (`CLISyncService`)
 A WebSocket client running in the browser that connects to a local Node.js server (`bridge.js`).
@@ -47,12 +50,10 @@ The `ProjectData` object is the single source of truth. Key sub-structures:
 ## 4. Security Model
 *   **Authentication:** Supabase Auth (Magic Link).
 *   **Authorization:** Row Level Security (RLS) on `public.projects` table.
-    *   `auth.uid() = user_id` for CRUD.
-    *   `is_public = true` for Marketplace viewing.
-*   **API Keys:** Gemini API keys are injected via `process.env` in build, but `CloudStorageService` supports "Bring Your Own Key" (BYOK) patterns for the Supabase connection if configured manually.
+*   **Isolation:** WebContainers run in a secure sandbox. They cannot access the host machine's files directly (unlike the Bridge).
 
 ## 5. Database Schema (Supabase)
-The cloud backend relies on the following PostgreSQL schema. If using BYOB (Bring Your Own Backend), ensure these tables exist.
+The cloud backend relies on the following PostgreSQL schema.
 
 ```sql
 -- 1. Projects Table
@@ -68,28 +69,24 @@ create table public.projects (
   last_updated timestamptz default now()
 );
 
--- 2. Profiles Table
-create table public.profiles (
-  id uuid references auth.users not null primary key,
-  email text,
-  display_name text,
-  avatar_url text
+-- 2. Organization Members
+create table public.organization_members (
+  id uuid primary key default gen_random_uuid(),
+  organization_id text not null,
+  user_id uuid references auth.users not null,
+  role text check (role in ('Owner', 'Admin', 'Member', 'Viewer')),
+  joined_at timestamptz default now()
 );
-
--- RLS Policies
-alter table public.projects enable row level security;
-create policy "Users can CRUD their own projects" on public.projects for all using (auth.uid() = user_id);
-create policy "Public projects are viewable by everyone" on public.projects for select using (is_public = true);
 ```
 
 ## 6. Directory Structure
 ```
 src/
-├── components/       # UI Views (ArchitectureView, KanbanBoard, etc.)
+├── components/       # UI Views (ArchitectureView, DevConsole, etc.)
 ├── utils/
 │   ├── db.ts         # IndexedDB wrapper
 │   ├── cloudStorage.ts # Supabase Sync Logic
-│   ├── validators.ts # JSON Schema validation
+│   ├── WebContainerService.ts # Browser Runtime Logic
 │   └── projectFileSystem.ts # Virtual File System generator
 ├── GeminiService.ts  # Cloud AI Logic
 ├── LocalIntelligence.ts # WebGPU Logic
