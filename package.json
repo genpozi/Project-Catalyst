@@ -19,7 +19,9 @@
     "reactflow": "^11.11.4",
     "@webcontainer/api": "latest",
     "xterm": "latest",
-    "xterm-addon-fit": "latest"
+    "xterm-addon-fit": "latest",
+    "vite": "^7.3.0",
+    "@vitejs/plugin-react": "^5.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
