@@ -1,5 +1,5 @@
 
-const CACHE_NAME = '0relai-v4.0-cache';
+const CACHE_NAME = '0relai-v4.1-cache';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
@@ -33,14 +33,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // CRITICAL FIX: Do not attempt to cache cross-origin CDN resources (Tailwind, etc.)
-  // in the Service Worker when running with COOP/COEP headers.
-  // This prevents the "Failed to fetch" and "Blocked by CORS policy" errors.
+  // CRITICAL: Do not cache cross-origin/CDN fetching in this simple SW to avoid CORS/COEP blocking issues.
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
-  // Network First strategy for local assets to ensure fresh code
   event.respondWith(
     fetch(event.request).catch(() => {
       return caches.match(event.request);
