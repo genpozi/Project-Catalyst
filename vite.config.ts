@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
+  // Load all env vars (empty string prefix) to capture API_KEY from Vercel
   const env = loadEnv(mode, (process as any).cwd(), '');
   
   return {
