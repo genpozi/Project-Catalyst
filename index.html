@@ -6,51 +6,83 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#09090b" />
-    <meta name="description" content="0relai (Zero Reliance) is an advanced architectural engine that leverages AI to guide users from abstract ideas to fully specified, production-ready technical blueprints." />
+    <meta name="description" content="0relai (Zero Reliance) is an advanced architectural engine." />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/vite.svg">
     <title>0relai</title>
+    
+    <!-- 1. Global Error Trap: Catch crashes before React mounts -->
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        // Ignore ResizeObserver loop limit exceeded
+        if (msg.includes('ResizeObserver')) return false;
+        
+        const root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          root.innerHTML = `
+            <div style="color:#ef4444; font-family:monospace; padding:20px; background:#09090b; height:100vh;">
+              <h2 style="margin-bottom:10px;">System Failure</h2>
+              <p style="opacity:0.8;">${msg}</p>
+              <div style="margin-top:20px; font-size:12px; opacity:0.5;">
+                ${url}:${line}:${col}
+              </div>
+              <button onclick="localStorage.clear(); window.location.reload()" style="margin-top:20px; background:#333; color:white; border:1px solid #555; padding:8px 16px; cursor:pointer;">
+                Emergency Reset
+              </button>
+            </div>
+          `;
+        }
+        return false;
+      };
+
+      // 2. Process Shim: Ensure GenAI SDK finds process.env
+      window.process = {
+        env: {
+          NODE_ENV: 'production',
+          API_KEY: '', // Populated by Vite transform or stays empty safely
+        },
+        version: ''
+      };
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.0/dist/mermaid.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reactflow@11.11.3/dist/style.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+    
     <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'ide-bg': '#09090b',       // Main background (darkest)
-              'ide-panel': '#121214',    // Panel background
-              'ide-border': 'rgba(255, 255, 255, 0.08)', // Subtle borders
-              'glass-btn': 'rgba(255, 255, 255, 0.05)',
-              'glass-btn-hover': 'rgba(255, 255, 255, 0.1)',
-              
-              'brand-primary': '#4f46e5', // Indigo-600
-              'brand-secondary': '#3b82f6', // Blue-500
-              'brand-accent': '#a855f7', // Purple-500
-              'tech-cyan': '#06b6d4', // Cyan
-            },
-            fontFamily: {
-              sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-              mono: ['JetBrains Mono', 'Menlo', 'Consolas', 'monospace'],
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.2s ease-out',
-              'slide-in-up': 'slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: 0 },
-                '100%': { opacity: 1 },
+      // 3. Safe Tailwind Config
+      if (window.tailwind) {
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                'ide-bg': '#09090b',       
+                'ide-panel': '#121214',    
+                'ide-border': 'rgba(255, 255, 255, 0.08)',
+                'glass-btn': 'rgba(255, 255, 255, 0.05)',
+                'glass-btn-hover': 'rgba(255, 255, 255, 0.1)',
+                'brand-primary': '#4f46e5',
+                'brand-secondary': '#3b82f6',
+                'brand-accent': '#a855f7',
+                'tech-cyan': '#06b6d4',
               },
-              slideInUp: {
-                '0%': { transform: 'translateY(10px)', opacity: 0 },
-                '100%': { transform: 'translateY(0)', opacity: 1 },
+              fontFamily: {
+                sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                mono: ['JetBrains Mono', 'Menlo', 'monospace'],
               },
-            },
-            boxShadow: {
-              'glow': '0 0 20px rgba(79, 70, 229, 0.15)',
-              'glass': '0 4px 30px rgba(0, 0, 0, 0.1)',
+              animation: {
+                'fade-in': 'fadeIn 0.2s ease-out',
+                'slide-in-up': 'slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+              },
+              keyframes: {
+                fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+                slideInUp: { '0%': { transform: 'translateY(10px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+              },
+              boxShadow: {
+                'glow': '0 0 20px rgba(79, 70, 229, 0.15)',
+                'glass': '0 4px 30px rgba(0, 0, 0, 0.1)',
+              }
             }
           }
         }
@@ -63,9 +95,10 @@
         font-family: 'Inter', sans-serif;
         background-color: #09090b;
         color: #e2e8f0;
-        overflow: hidden; /* App-like fixed viewport */
+        overflow: hidden;
         height: 100vh;
         width: 100vw;
+        margin: 0;
       }
 
       #root {
@@ -99,16 +132,6 @@
         outline: none;
       }
 
-      .glass-btn-primary {
-        background: rgba(79, 70, 229, 0.8);
-        border: 1px solid rgba(79, 70, 229, 0.5);
-        color: white;
-        box-shadow: 0 0 15px rgba(79, 70, 229, 0.2);
-      }
-      .glass-btn-primary:hover {
-        background: rgba(79, 70, 229, 1);
-      }
-
       /* Refined Scrollbars */
       .custom-scrollbar::-webkit-scrollbar {
         width: 5px;
@@ -125,7 +148,9 @@
         background: #475569;
       }
     </style>
-  <script type="importmap">
+    
+    <!-- 4. Critical: Align React versions strictly. REMOVED react-dom/ (v19) override. -->
+    <script type="importmap">
 {
   "imports": {
     "react-dom": "https://esm.sh/react-dom@18.2.0",
@@ -147,16 +172,30 @@
   }
 }
 </script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('SW registered'))
-        .catch(err => console.log('SW registration failed: ', err));
-    });
-  }
-</script>
-</head>
+    
+    <!-- 5. Service Worker Reset: Force unregister with safe handling -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          try {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+              for (let registration of registrations) {
+                // Wrap unregister in try/catch to avoid 'The document is in an invalid state' error
+                try {
+                    registration.unregister().catch(e => console.warn('SW Unregister failed:', e));
+                } catch(e) {
+                    console.warn('SW Cleanup error:', e);
+                }
+              }
+              console.log('Service Workers cleared to ensure fresh React 18 load');
+            }).catch(e => console.warn('Could not get SW registrations:', e));
+          } catch(e) {
+            console.warn('Navigator SW error:', e);
+          }
+        });
+      }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
   </body>

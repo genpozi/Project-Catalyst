@@ -9,9 +9,12 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
+      // Force injection of the key. Use empty string as fallback to avoid "undefined" crash.
       'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
       'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
       'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+      // Shim process.version for libraries that assume Node environment
+      'process.version': JSON.stringify('v18.0.0'),
     },
     server: {
       headers: {
