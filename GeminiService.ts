@@ -15,7 +15,11 @@ export class GeminiService {
   private modelPro = "gemini-3-pro-preview"; 
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        console.warn("API_KEY is missing. GeminiService might fail on requests.");
+    }
+    this.ai = new GoogleGenAI({ apiKey: apiKey || '' });
   }
 
   private getKnowledgeContext(kb: any[] | undefined): string {
